@@ -489,6 +489,7 @@ void HPL_pdtest(HPL_T_test* TEST,
     }
 
 #ifdef HPL_PROGRESS_REPORT
+    printf("Residual value = %.15f\n", resid1);
     if(resid1 < TEST->thrsh)
       printf("Residual Check: PASSED \n");
     else
