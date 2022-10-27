@@ -148,7 +148,7 @@ while true; do
         exit 0
         ;;
     --version)
-        ${mpi_bin} -np 1 ${mpi_args} ${rochpl_bin} --version
+        ${mpi_bin} -np 1 ${mpi_args} ${rochpl_runscript} --version
         exit 0
         ;;
     -P)
