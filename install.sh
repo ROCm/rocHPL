@@ -246,7 +246,6 @@ with_rocm=/opt/rocm
 with_mpi=tpl/openmpi
 with_rocblas=/opt/rocm/rocblas
 with_cpublas=tpl/blis/lib
-openmpi_ucx=false
 verbose_print=true
 progress_report=true
 detailed_timing=true
@@ -343,9 +342,7 @@ pushd .
   # #################################################
   if [[ "${with_mpi}" == tpl/openmpi ]]; then
 
-    #gpu_aware_mpi=ON #turn on GPU-aware MPI when using internal MPI library
     with_mpi=${PWD}/tpl/openmpi
-    openmpi_ucx=true
     install_openmpi
 
   fi
@@ -374,10 +371,6 @@ pushd .
     cmake_common_options="${cmake_common_options} -DHPL_DETAILED_TIMING=ON"
   fi
   shopt -u nocasematch
-
-  if [[ "${openmpi_ucx}" == true ]]; then
-    cmake_common_options="${cmake_common_options} -DHPL_OPENMPI_UCX=ON"
-  fi
 
   # Build library with AMD toolchain because of existence of device kernels
   mkdir -p ${build_dir} && cd ${build_dir}

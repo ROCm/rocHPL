@@ -33,8 +33,6 @@ option(ROCM_PATH "Path to ROCm install" /opt/rocm)
 option(HPL_BLAS_DIR "Path to CPU BLAS library" ${CMAKE_CURRENT_SOURCE_DIR}/tpl/openblas)
 option(HPL_MPI_DIR  "Path to MPI library" ${CMAKE_CURRENT_SOURCE_DIR}/tpl/openmpi)
 
-option(HPL_OPENMPI_UCX "Compile WITH OpenMPI+UCX support." OFF)
-
 set(CMAKE_INSTALL_PREFIX "rocHPL" CACHE PATH "Install path prefix, prepended onto install directories")
 
 # CMake modules
