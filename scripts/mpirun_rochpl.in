@@ -98,6 +98,10 @@ filename=HPL.dat
 inputfile=false
 cmdrun=false
 
+oversubscribe_node=1
+oversubscribe_cores=true
+gpu_offset=0
+
 # #################################################
 # MPI Args
 # #################################################
@@ -128,7 +132,7 @@ fi
 # check if we have a modern version of getopt that can handle whitespace and long parameters
 getopt -T
 if [[ $? -eq 4 ]]; then
-  GETOPT_PARSE=$(getopt --name "${0}" --longoptions NB:,help,version, --options hP:Q:p:q:N:i:f: -- "$@")
+  GETOPT_PARSE=$(getopt --name "${0}" --longoptions NB:,help,version,,oversubscribe-node:,oversubscribe-cores:,gpu-offset: --options hP:Q:p:q:N:i:f: -- "$@")
 else
   echo "Need a new version of getopt"
   exit 1
@@ -178,6 +182,15 @@ while true; do
         filename=${2}
         inputfile=true
         shift 2 ;;
+    --oversubscribe-node)
+        oversubscribe_node=${2}
+        shift 2 ;;
+    --oversubscribe-cores)
+        oversubscribe_cores=${2}
+        shift 2 ;;
+    --gpu-offset)
+        gpu_offset=${2}
+        shift 2 ;;
     --) shift ; break ;;
     *)  echo "Unexpected command line parameter received; aborting";
         exit 1
@@ -202,6 +215,8 @@ if [[ "${inputfile}" == true ]]; then
 else
   rochpl_args="-P ${P} -Q ${Q} -p ${p} -q ${q} -N ${N} --NB ${NB} -f ${frac}"
 fi
+
+rochpl_args+=" --oversubscribe-node=${oversubscribe_node} --oversubscribe-cores=${oversubscribe_cores} --gpu-offset=${gpu_offset}"
 
 #run
 ${mpi_bin} -np ${np} ${mpi_args} ${rochpl_runscript} ${rochpl_args}
