@@ -101,7 +101,9 @@ cmdrun=false
 
 export LD_LIBRARY_PATH=${rocblas_dir}:${blas_dir}:${rocm_dir}/lib:$LD_LIBRARY_PATH
 
-oversubscribe=true
+oversubscribe_node=1
+oversubscribe_cores=true
+gpu_offset=0
 
 # #################################################
 # Parameter parsing
@@ -110,7 +112,7 @@ oversubscribe=true
 # check if we have a modern version of getopt that can handle whitespace and long parameters
 getopt -T
 if [[ $? -eq 4 ]]; then
-  GETOPT_PARSE=$(getopt --name "${0}" --longoptions NB:,help,version, --options hP:Q:p:q:N:i:f: -- "$@")
+  GETOPT_PARSE=$(getopt --name "${0}" --longoptions NB:,help,version,oversubscribe-node:,oversubscribe-cores:,gpu-offset: --options hP:Q:p:q:N:i:f: -- "$@")
 else
   echo "Need a new version of getopt"
   exit 1
@@ -159,6 +161,15 @@ while true; do
     -i)
         filename=${2}
         inputfile=true
+        shift 2 ;;
+    --oversubscribe-node)
+        oversubscribe_node=${2}
+        shift 2 ;;
+    --oversubscribe-cores)
+        oversubscribe_cores=${2}
+        shift 2 ;;
+    --gpu-offset)
+        gpu_offset=${2}
         shift 2 ;;
     --) shift ; break ;;
     *)  echo "Unexpected command line parameter received; aborting";
@@ -257,6 +268,10 @@ num_cpu_cores=$(lscpu | grep "Core(s)" | awk '{print $4}')
 num_cpu_sockets=$(lscpu | grep Socket | awk '{print $2}')
 total_cpu_cores=$(($num_cpu_cores*$num_cpu_sockets))
 
+if [[ "${oversubscribe_node}" -gt "1" ]]; then
+  total_cpu_cores=$((total_cpu_cores/oversubscribe_node))
+fi
+
 # Ranks in different processes rows will take distinct chunks of cores
 row_stride=$((total_cpu_cores/p))
 col_stride=$((row_stride/q))
@@ -265,7 +280,13 @@ myp=$((rank%p))
 myq=$((rank/p))
 
 #Although ranks are column-major order, we select GPUs in row-major order on node
-mygpu=$((myq+myp*q))
+mygpu=$((myq+myp*q + gpu_offset))
+
+gpu_list="${gpu_offset}"
+for i in $(seq $((gpu_offset+1)) $((gpu_offset+size-1)))
+do
+  gpu_list+=",$i"
+done
 
 # Try to detect special Bard-peak core mapping
 if [[ -n ${HPL_PLATFORM+x} ]]; then
@@ -273,6 +294,8 @@ if [[ -n ${HPL_PLATFORM+x} ]]; then
 else
   platform=$(cat /sys/class/dmi/id/product_name)
 fi
+
+platform=null
 
 if [[ "$platform" == "BardPeak" || "$platform" == "HPE_CRAY_EX235A" ]]; then
   # Special core mapping for BardPeak
@@ -312,43 +335,71 @@ if [[ "$platform" == "BardPeak" || "$platform" == "HPE_CRAY_EX235A" ]]; then
 
   places="{$root_core-$((root_core+7))}"
 
-  # Loop through unassigned CCDs
-  for c in $(seq $((mygpu+size)) $size 7)
-  do
-    iroot_core=${root_cores[c]}
-    for i in $(seq $((iroot_core)) $((iroot_core+8-1)))
+  if [[ "${oversubscribe_node}" -eq "1" ]]; then
+    # Loop through unassigned CCDs
+    for c in $(seq $((mygpu+size)) $size $((mygpu+8-1)))
     do
-      omp_places+=",{$i}"
-    done
-    omp_num_threads=$((omp_num_threads+8))
-    places+=",{$iroot_core-$((iroot_core+7))}"
-  done
-
-  if [[ "${oversubscribe}" == true ]]; then
-    # Add cores from different columns, without their root cores
-    for j in $(seq 0  $((q-1)))
-    do
-      if [[ "$j" == "$myq" ]]; then
-        continue
-      fi
-      for jj in $(seq 0 $size 7)
+      iroot_core=${root_cores[$((c%8))]}
+      for i in $(seq $((iroot_core)) $((iroot_core+8-1)))
       do
-        q_gpu=$((jj+j+myp*q))
-        q_core=$((root_cores[q_gpu]))
-        offset=$(( (q_gpu>=size) ? 0 : 1))
-        for i in $(seq $((q_core+offset)) $((q_core+8-1)))
-        do
-          omp_places+=",{$i}"
-        done
-        omp_num_threads=$((omp_num_threads+8-offset))
-        places+=",{$((q_core+offset))-$((q_core+7))}"
+        omp_places+=",{$i}"
       done
+      omp_num_threads=$((omp_num_threads+8))
+      places+=",{$iroot_core-$((iroot_core+7))}"
     done
+
+    if [[ "${oversubscribe_cores}" == true ]]; then
+      # Add cores from different columns, without their root cores
+      for j in $(seq 0  $((q-1)))
+      do
+        if [[ "$j" == "$myq" ]]; then
+          continue
+        fi
+        for jj in $(seq 0 $size 7)
+        do
+          q_gpu=$((jj+j+myp*q))
+          q_core=$((root_cores[$(( (q_gpu+gpu_offset)%8 ))]))
+          offset=$(( (q_gpu>=size) ? 0 : 1))
+          for i in $(seq $((q_core+offset)) $((q_core+8-1)))
+          do
+            omp_places+=",{$i}"
+          done
+          omp_num_threads=$((omp_num_threads+8-offset))
+          places+=",{$((q_core+offset))-$((q_core+7))}"
+        done
+      done
+    fi
+  else
+    #if we're oversubscribing the node with other rocHPL processes, we
+    # assume the other CCDs are occupied. When oversubscribing, we
+    # can only use cores from the CCDs being used in this rocHPL run
+    if [[ "${oversubscribe_cores}" == true ]]; then
+      # Add cores from different columns, without their root cores
+      for j in $(seq 0  $((q-1)))
+      do
+        if [[ "$j" == "$myq" ]]; then
+          continue
+        fi
+        for jj in $(seq 0 $size 7)
+        do
+          q_gpu=$((jj+j+myp*q))
+          q_core=$((root_cores[$(( (q_gpu+gpu_offset)%8 ))]))
+          if [[ "$q_gpu" -lt "$size" ]]; then
+            for i in $(seq $((q_core+1)) $((q_core+8-1)))
+            do
+              omp_places+=",{$i}"
+            done
+            omp_num_threads=$((omp_num_threads+8-1))
+            places+=",{$((q_core+1))-$((q_core+7))}"
+          fi
+        done
+      done
+    fi
   fi
 
 else
   # Default core mapping
-  root_core=$((myp*row_stride + myq*col_stride))
+  root_core=$((myp*row_stride + myq*col_stride + gpu_offset*col_stride))
 
   omp_num_threads=${col_stride}
   # First omp place is the root core
@@ -366,14 +417,14 @@ else
     places="{$root_core}"
   fi
 
-  if [[ "${oversubscribe}" == true ]]; then
+  if [[ "${oversubscribe_cores}" == true ]]; then
     # Add cores from different columns, without their root cores
     for j in $(seq 0 $((q-1)))
     do
       if [[ "$j" == "$myq" ]]; then
         continue
       fi
-      q_core=$((myp*row_stride + j*col_stride))
+      q_core=$((myp*row_stride + j*col_stride + gpu_offset*col_stride))
       for i in $(seq $((q_core+1)) $((q_core+col_stride-1)))
       do
         omp_places+=",{$i}"
@@ -405,6 +456,8 @@ if [[ "${inputfile}" == true ]]; then
 else
   rochpl_args+=" -N ${N} -NB ${NB}"
 fi
+
+export HIP_VISIBLE_DEVICES=$gpu_list
 
 #run
 ${rochpl_bin} ${rochpl_args}
