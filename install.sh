@@ -90,7 +90,13 @@ exit_with_error( )
 check_exit_code( )
 {
   if (( $? != 0 )); then
-    exit $@
+    err=$1
+    msg=$2
+    if [[ "$msg" == "" ]]; then
+      msg="Unknown error"
+    fi
+    echo "ERROR: $msg"
+    exit $err
   fi
 }
 
@@ -377,7 +383,13 @@ pushd .
   ${cmake_executable} ${cmake_common_options} ..
   check_exit_code 2
 
-  make -j$(nproc) install
+  if [[ -e build.ninja ]]; then
+    command -v ninja > /dev/null 2>&1
+    check_exit_code 2 "Ninja command was not found, but is required by CMake config"
+    ninja install
+  else
+    make -j$(nproc) install
+  fi
   check_exit_code 2
 
 popd
