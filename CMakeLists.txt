@@ -113,7 +113,7 @@ set(TARGETS "${DEFAULT_AMDGPU_TARGETS}" CACHE STRING "List of specific machine t
 
 # AMD targets
 foreach(target ${TARGETS})
-  list(APPEND HIP_HIPCC_FLAGS "--amdgpu-target=${target}")
+  list(APPEND HIP_HIPCC_FLAGS "--offload-arch=${target}")
 endforeach()
 
 # Target executable
