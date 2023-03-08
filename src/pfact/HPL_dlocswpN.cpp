@@ -57,7 +57,7 @@ void HPL_dlocswpN(HPL_T_panel* PANEL,
    */
 
   double  gmax;
-  double *A1, *A2, *L, *Wr0, *Wmx;
+  double *A1, *A2, *Wr0, *Wmx;
   int     ilindx, lda, myrow, n0;
 
   myrow  = PANEL->grid->myrow;
@@ -65,13 +65,9 @@ void HPL_dlocswpN(HPL_T_panel* PANEL,
   int NB = PANEL->nb;
   lda    = PANEL->lda;
 
-  Wr0     = (Wmx = WORK + 4) + NB;
-  Wmx[JJ] = gmax = WORK[0];
+  Wr0  = (Wmx = WORK + 4) + NB;
+  gmax = WORK[0];
 
-  /*
-   * Replicated swap and copy of the current (new) row of A into L1
-   */
-  L = Mptr(PANEL->L1, JJ, 0, n0);
   /*
    * If the pivot is non-zero ...
    */
@@ -89,23 +85,13 @@ void HPL_dlocswpN(HPL_T_panel* PANEL,
          */
         if((ilindx = (int)(WORK[1])) != 0) {
           /*
-           * then copy the max row into L1 and locally swap the 2 rows of A.
+           * then locally swap the 2 rows of A.
            */
           A1 = Mptr(PANEL->A, II, 0, lda);
           A2 = Mptr(A1, ilindx, 0, lda);
 
-          HPL_dcopy(n0, Wmx, 1, L, n0);
           HPL_dcopy(n0, Wmx, 1, A1, lda);
           HPL_dcopy(n0, Wr0, 1, A2, lda);
-
-        } else {
-          /*
-           * otherwise the current row of  A  is swapped with itself, so just
-           * copy the current of A into L1.
-           */
-          *Mptr(PANEL->A, II, JJ, lda) = gmax;
-
-          HPL_dcopy(n0, Wmx, 1, L, n0);
         }
 
       } else {
@@ -114,34 +100,23 @@ void HPL_dlocswpN(HPL_T_panel* PANEL,
          * so copy Wmx into L1 and A.
          */
         A1 = Mptr(PANEL->A, II, 0, lda);
-
-        HPL_dcopy(n0, Wmx, 1, L, n0);
         HPL_dcopy(n0, Wmx, 1, A1, lda);
       }
 
     } else {
       /*
-       * otherwise I do not own the current row of A, so copy the max row  Wmx
-       * into L1.
-       */
-      HPL_dcopy(n0, Wmx, 1, L, n0);
-
-      /*
-       * and if I own the max row, overwrite it with the current row Wr0.
+       * otherwise I do not own the current row of A. if I own the max row,
+         overwrite it with the current row Wr0.
        */
       if(myrow == (int)(WORK[3])) {
         A2 = Mptr(PANEL->A, II + (size_t)(WORK[1]), 0, lda);
-
         HPL_dcopy(n0, Wr0, 1, A2, lda);
       }
     }
   } else {
     /*
-     * Otherwise the max element in the current column is zero,  simply copy
-     * the current row Wr0 into L1. The matrix is singular.
+     * Otherwise the max element in the current column is zero, The matrix is singular.
      */
-    HPL_dcopy(n0, Wr0, 1, L, n0);
-
     /*
      * set INFO.
      */

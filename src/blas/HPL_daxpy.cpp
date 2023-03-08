@@ -26,18 +26,27 @@ void HPL_daxpy_omp(const int     N,
                    const int     thread_rank,
                    const int     thread_size) {
 
-  int tile = 0;
-  if(tile % thread_size == thread_rank) {
-    const int nn = Mmin(NB - II, N);
-    HPL_daxpy(nn, ALPHA, X, INCX, Y, INCY);
-  }
-  ++tile;
-  int i = NB - II;
-  for(; i < N; i += NB) {
-    if(tile % thread_size == thread_rank) {
-      const int nn = Mmin(NB, N - i);
-      HPL_daxpy(nn, ALPHA, X + i * INCX, INCX, Y + i * INCY, INCY);
+  if (thread_size==1) {
+
+    HPL_daxpy(N, ALPHA, X, INCX, Y, INCY);
+
+  } else {
+
+    if (thread_rank==0) return;
+
+    int tile = 0;
+    if(tile % (thread_size-1) == (thread_rank-1)) {
+      const int nn = Mmin(NB - II, N);
+      HPL_daxpy(nn, ALPHA, X, INCX, Y, INCY);
     }
     ++tile;
+    int i = NB - II;
+    for(; i < N; i += NB) {
+      if(tile % (thread_size-1) == (thread_rank-1)) {
+        const int nn = Mmin(NB, N - i);
+        HPL_daxpy(nn, ALPHA, X + i * INCX, INCX, Y + i * INCY, INCY);
+      }
+      ++tile;
+    }
   }
 }

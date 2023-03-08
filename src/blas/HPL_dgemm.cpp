@@ -34,32 +34,42 @@ void HPL_dgemm_omp(const enum HPL_ORDER ORDER,
                    const int            thread_rank,
                    const int            thread_size) {
 
-  int tile = 0;
-  if(tile % thread_size == thread_rank) {
-    const int mm = Mmin(NB - II, M);
+  if (thread_size==1) {
+
     HPL_dgemm(
-        ORDER, TRANSA, TRANSB, mm, N, K, ALPHA, A, LDA, B, LDB, BETA, C, LDC);
-  }
-  ++tile;
-  int i = NB - II;
-  for(; i < M; i += NB) {
-    if(tile % thread_size == thread_rank) {
-      const int mm = Mmin(NB, M - i);
-      HPL_dgemm(ORDER,
-                TRANSA,
-                TRANSB,
-                mm,
-                N,
-                K,
-                ALPHA,
-                A + i,
-                LDA,
-                B,
-                LDB,
-                BETA,
-                C + i,
-                LDC);
+          ORDER, TRANSA, TRANSB, M, N, K, ALPHA, A, LDA, B, LDB, BETA, C, LDC);
+
+  } else {
+
+    if (thread_rank==0) return;
+
+    int tile = 0;
+    if(tile % (thread_size-1) == (thread_rank-1)) {
+      const int mm = Mmin(NB - II, M);
+      HPL_dgemm(
+          ORDER, TRANSA, TRANSB, mm, N, K, ALPHA, A, LDA, B, LDB, BETA, C, LDC);
     }
     ++tile;
+    int i = NB - II;
+    for(; i < M; i += NB) {
+      if(tile % (thread_size-1) == (thread_rank-1)) {
+        const int mm = Mmin(NB, M - i);
+        HPL_dgemm(ORDER,
+                  TRANSA,
+                  TRANSB,
+                  mm,
+                  N,
+                  K,
+                  ALPHA,
+                  A + i,
+                  LDA,
+                  B,
+                  LDB,
+                  BETA,
+                  C + i,
+                  LDC);
+      }
+      ++tile;
+    }
   }
 }

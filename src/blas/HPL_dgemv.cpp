@@ -32,29 +32,38 @@ void HPL_dgemv_omp(const enum HPL_ORDER ORDER,
                    const int            thread_rank,
                    const int            thread_size) {
 
-  int tile = 0;
-  if(tile % thread_size == thread_rank) {
-    const int mm = Mmin(NB - II, M);
-    HPL_dgemv(ORDER, TRANS, mm, N, ALPHA, A, LDA, X, INCX, BETA, Y, INCY);
-  }
-  ++tile;
-  int i = NB - II;
-  for(; i < M; i += NB) {
-    if(tile % thread_size == thread_rank) {
-      const int mm = Mmin(NB, M - i);
-      HPL_dgemv(ORDER,
-                TRANS,
-                mm,
-                N,
-                ALPHA,
-                A + i,
-                LDA,
-                X,
-                INCX,
-                BETA,
-                Y + i * INCY,
-                INCY);
+  if (thread_size==1) {
+
+    HPL_dgemv(ORDER, TRANS, M, N, ALPHA, A, LDA, X, INCX, BETA, Y, INCY);
+
+  } else {
+
+    if (thread_rank==0) return;
+
+    int tile = 0;
+    if(tile % (thread_size-1) == (thread_rank-1)) {
+      const int mm = Mmin(NB - II, M);
+      HPL_dgemv(ORDER, TRANS, mm, N, ALPHA, A, LDA, X, INCX, BETA, Y, INCY);
     }
     ++tile;
+    int i = NB - II;
+    for(; i < M; i += NB) {
+      if(tile % (thread_size-1) == (thread_rank-1)) {
+        const int mm = Mmin(NB, M - i);
+        HPL_dgemv(ORDER,
+                  TRANS,
+                  mm,
+                  N,
+                  ALPHA,
+                  A + i,
+                  LDA,
+                  X,
+                  INCX,
+                  BETA,
+                  Y + i * INCY,
+                  INCY);
+      }
+      ++tile;
+    }
   }
 }

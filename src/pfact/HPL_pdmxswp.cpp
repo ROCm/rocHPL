@@ -71,62 +71,29 @@ void HPL_pdmxswp(HPL_T_panel* PANEL,
    * ---------------------------------------------------------------------
    */
 
-  double *    A0, *Wmx, *Wwork;
-  HPL_T_grid* grid;
-  MPI_Comm    comm;
-  int         cnt_, cnt0, i, icurrow, lda, myrow, n0;
-
 /* ..
  * .. Executable Statements ..
  */
 #ifdef HPL_DETAILED_TIMING
   HPL_ptimer(HPL_TIMING_MXSWP);
 #endif
-  grid    = PANEL->grid;
-  comm    = grid->col_comm;
-  myrow   = grid->myrow;
-  n0      = PANEL->jb;
-  int NB  = PANEL->nb;
-  icurrow = PANEL->prow;
-  /*
-   * Set up pointers in workspace:  WORK and Wwork  point to the beginning
-   * of the buffers of size 4 + 2*N0 to be combined. Wmx points to the row
-   * owning the local (before combine) and global (after combine) absolute
-   * value max. A0 points to the copy of the current row of the matrix.
-   */
-  cnt0 = 4 + 2 * NB;
 
-  A0    = (Wmx = WORK + 4) + NB;
-  Wwork = WORK + cnt0;
+  HPL_T_grid *grid = PANEL->grid;
+  MPI_Comm    comm = grid->col_comm;
+  int NB      = PANEL->nb;
+  int icurrow = PANEL->prow;
 
-  /*
-   * Wmx[0:N0-1] := A[ilindx,0:N0-1] where ilindx is  (int)(WORK[1])  (row
-   * with max in current column). If I am the current process row, pack in
-   * addition the current row of A in A0[0:N0-1].  If I do not own any row
-   * of A, then zero out Wmx[0:N0-1].
-   */
-  if(M > 0) {
-    lda = PANEL->lda;
-
-    HPL_dcopy(n0, Mptr(PANEL->A, II + (int)(WORK[1]), 0, lda), lda, Wmx, 1);
-    if(myrow == icurrow) {
-      HPL_dcopy(n0, Mptr(PANEL->A, II, 0, lda), lda, A0, 1);
-    } else {
-      for(i = 0; i < n0; i++) A0[i] = HPL_rzero;
-    }
-  } else {
-    for(i = 0; i < n0; i++) A0[i] = HPL_rzero;
-    for(i = 0; i < n0; i++) Wmx[i] = HPL_rzero;
-  }
+  int cnt0 = 4 + 2 * NB;
+  double* Wwork = WORK + cnt0;
 
   /* Perform swap-broadcast */
   HPL_all_reduce_dmxswp(WORK, cnt0, icurrow, comm, Wwork);
 
+#ifdef HPL_DETAILED_TIMING
+  HPL_ptimer(HPL_TIMING_MXSWP);
+#endif
   /*
    * Save the global pivot index in pivot array
    */
   (PANEL->ipiv)[JJ] = (int)WORK[2];
-#ifdef HPL_DETAILED_TIMING
-  HPL_ptimer(HPL_TIMING_MXSWP);
-#endif
 }

@@ -92,6 +92,18 @@ void HPL_dlocmax(HPL_T_panel* PANEL,
       WORK[1] = (double)(ilindx);
       WORK[2] = (double)(igindx);
       WORK[3] = (double)(myrow);
+
+      int n0  = PANEL->jb;
+      int lda = PANEL->lda;
+      int icurrow = PANEL->prow;
+
+      double* Wmx = WORK + 4;
+      double* A0  = Wmx + nb;
+
+      HPL_dcopy(n0, Mptr(PANEL->A, II + ilindx, 0, lda), lda, Wmx, 1);
+      if(myrow == icurrow) {
+        HPL_dcopy(n0, Mptr(PANEL->A, II, 0, lda), lda, A0, 1);
+      }
     }
   } else {
     /*
@@ -104,7 +116,4 @@ void HPL_dlocmax(HPL_T_panel* PANEL,
       WORK[3]                     = (double)(PANEL->grid->nprow);
     }
   }
-
-// make sure WORK is visible to all threads
-#pragma omp barrier
 }

@@ -109,24 +109,41 @@ void HPL_pdpanrlN(HPL_T_panel* PANEL,
     iip1 = ii;
     Mm1  = m;
   }
+
+  int nb = PANEL->nb;
+  int jb = PANEL->jb;
+  double* Amax = WORK + 2*(4+2*nb);
+
   /*
-   * Find local absolute value max in first column - initialize WORK[0:3]
+   * Find local absolute value max in first column - initialize WORK
    */
   HPL_dlocmax(
       PANEL, m, ii, jj, WORK, thread_rank, thread_size, max_index, max_value);
 
+  /*
+   * Swap and broadcast the current row
+   */
+  if(thread_rank == 0) {
+    HPL_pdmxswp(PANEL, m, ii, jj, WORK);
+
+    /*
+     * Replicated copy of the current (new) row of A into L1
+     */
+    double *L = Mptr(PANEL->L1, jj, 0, jb);
+    double *Wmx = WORK + 4;
+    HPL_dcopy(jb, Wmx, 1, L, jb);
+
+    /*
+     * Local row swap in A
+     */
+    HPL_dlocswpN(PANEL, ii, jj, WORK);
+  }
+
+  #pragma omp barrier
+
   while(Nm1 >= 1) {
     Acur = Mptr(A, iip1, jj, lda);
     Anxt = Mptr(Acur, 0, 1, lda);
-    /*
-     * Swap and broadcast the current row
-     */
-    if(thread_rank == 0) {
-      HPL_pdmxswp(PANEL, m, ii, jj, WORK);
-      HPL_dlocswpN(PANEL, ii, jj, WORK);
-    }
-
-#pragma omp barrier
 
     /*
      * Scale current column by its absolute value max entry  -  Update trai-
@@ -155,6 +172,11 @@ void HPL_pdpanrlN(HPL_T_panel* PANEL,
                   thread_rank,
                   thread_size);
 
+    if(thread_rank == 0) {
+      // Duplicate the max row from the WORK space into Amax
+      HPL_dcopy(PANEL->jb, WORK+4, 1, Amax, 1);
+    }
+
     HPL_dlocmax(PANEL,
                 Mm1,
                 iip1,
@@ -165,6 +187,12 @@ void HPL_pdpanrlN(HPL_T_panel* PANEL,
                 max_index,
                 max_value);
 
+    // Wait for WORK to be populated, and Amax copied
+    #pragma omp barrier
+
+    /*
+     * Use Amax to perform rank 1 update on other threads
+     */
     if(Nm1 > 1)
       HPL_dger_omp(HplColumnMajor,
                    Mm1,
@@ -172,7 +200,7 @@ void HPL_pdpanrlN(HPL_T_panel* PANEL,
                    -HPL_rone,
                    Acur,
                    1,
-                   WORK + 4 + jj + 2,
+                   Amax + jj + 2,
                    1,
                    Mptr(Anxt, 0, 1, lda),
                    lda,
@@ -181,16 +209,39 @@ void HPL_pdpanrlN(HPL_T_panel* PANEL,
                    thread_rank,
                    thread_size);
 
-#pragma omp barrier
-
     /*
-     * Same thing as above but with worse data access on y (A += x * y^T)
-     *
-     *    if( Nm1 > 1 ) )
-     *       HPL_dger( HplColumnMajor, Mm1, Nm1-1, -HPL_rone, Acur, 1,
-     *                 Mptr( L1, jj, jj+2, n0 ), n0, Mptr( Anxt, 0, 1, lda ),
-     *                 lda );
+     * Thread 0 Swap and broadcast the current row
      */
+    if(thread_rank == 0) {
+      double* Wmx = WORK + 4;
+      double* A0  = Wmx + nb;
+
+      // Update the rows to swap
+      HPL_daxpy(Nm1 - 1, -Wmx[jj], Amax + jj + 2, 1, Wmx + jj + 2, 1);
+      if(curr) {
+        HPL_daxpy(Nm1 - 1, -A0[jj], Amax + jj + 2, 1, A0 + jj + 2, 1);
+      }
+
+      // Swap
+      HPL_pdmxswp(PANEL, m, iip1, jj+1, WORK);
+
+      /*
+       * Replicated copy of the current (new) row of A into L1
+       */
+      double *L = Mptr(PANEL->L1, jj + 1, 0, jb);
+      HPL_dcopy(jb, Wmx, 1, L, jb);
+    }
+
+    // Wait for rank 1 update to complete
+    #pragma omp barrier
+
+    if(thread_rank == 0) {
+      /*
+       * Local row swap in A
+       */
+      HPL_dlocswpN(PANEL, iip1, jj+1, WORK);
+    }
+
     if(curr != 0) {
       ii = iip1;
       iip1++;
@@ -200,17 +251,10 @@ void HPL_pdpanrlN(HPL_T_panel* PANEL,
 
     Nm1--;
     jj++;
-  }
-  /*
-   * Swap and broadcast last row - Scale last column by its absolute value
-   * max entry
-   */
-  if(thread_rank == 0) {
-    HPL_pdmxswp(PANEL, m, ii, jj, WORK);
-    HPL_dlocswpN(PANEL, ii, jj, WORK);
-  }
 
-#pragma omp barrier
+    // Wait for local swap
+    #pragma omp barrier
+  }
 
   if(WORK[0] != HPL_rzero)
     HPL_dscal_omp(Mm1,
