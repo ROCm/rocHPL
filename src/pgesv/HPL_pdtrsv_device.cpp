@@ -70,10 +70,8 @@ void HPL_pdtrsv(HPL_T_grid* GRID, HPL_T_pmat* AMAT) {
    */
 
   MPI_Comm Ccomm, Rcomm;
-  double * Aprev = NULL, *XC = NULL, *XR = NULL, *Xd = NULL, *Xdprev = NULL,
-         *W  = NULL;
-  double *dA = NULL, *dAprev = NULL, *dAptr, *dXC = NULL, *dXR = NULL,
-         *dXd = NULL, *dXdprev = NULL, *dW = NULL;
+  double *A = NULL, *Aprev = NULL, *Aptr, *XC = NULL, *XR = NULL,
+         *Xd = NULL, *Xdprev = NULL, *W = NULL;
   int Alcol, Alrow, Anpprev, Anp, Anq, Bcol, Cmsgid, GridIsNotPx1, GridIsNot1xQ,
       Rmsgid, colprev, kb, kbprev, lda, mycol, myrow, n, n1, n1p,
       n1pprev = 0, nb, npcol, nprow, rowprev, tmp1, tmp2;
@@ -99,15 +97,12 @@ void HPL_pdtrsv(HPL_T_grid* GRID, HPL_T_pmat* AMAT) {
   Mnumroc(Anp, n, nb, nb, myrow, 0, nprow);
   Mnumroc(Anq, n, nb, nb, mycol, 0, npcol);
 
-  dA  = AMAT->dA;
-  dXR = AMAT->dX;
-  XR  = AMAT->W + 2 * Anp;
+  A  = AMAT->A;
+  XR = AMAT->X;
 
   XC  = AMAT->W;
-  dXC = AMAT->dW;
 
   W  = AMAT->W + Anp;
-  dW = AMAT->dW + Anp;
 
   hipStream_t stream;
   rocblas_get_stream(handle, &stream);
@@ -121,22 +116,22 @@ void HPL_pdtrsv(HPL_T_grid* GRID, HPL_T_pmat* AMAT) {
   Alcol = tmp1 - (tmp1 / npcol) * npcol;
   kb    = n - tmp1 * nb;
 
-  dAptr      = (double*)(dA);
-  double* dB = Mptr(dAptr, 0, Anq, lda);
+  Aptr      = (double*)(A);
+  double* B = Mptr(Aptr, 0, Anq, lda);
 
   Mindxg2p(n, nb, nb, Bcol, 0, npcol);
 
   if(Anp > 0) {
     if(Alcol != Bcol) {
       if(mycol == Bcol) {
-        hipMemcpy(dXC, dB, Anp * sizeof(double), hipMemcpyDeviceToDevice);
-        (void)HPL_send(dXC, Anp, Alcol, Rmsgid, Rcomm);
+        hipMemcpy(XC, B, Anp * sizeof(double), hipMemcpyDeviceToDevice);
+        (void)HPL_send(XC, Anp, Alcol, Rmsgid, Rcomm);
       } else if(mycol == Alcol) {
-        (void)HPL_recv(dXC, Anp, Bcol, Rmsgid, Rcomm);
+        (void)HPL_recv(XC, Anp, Bcol, Rmsgid, Rcomm);
       }
     } else {
       if(mycol == Bcol) {
-        hipMemcpy(dXC, dB, Anp * sizeof(double), hipMemcpyDeviceToDevice);
+        hipMemcpy(XC, B, Anp * sizeof(double), hipMemcpyDeviceToDevice);
       }
     }
   }
@@ -145,7 +140,7 @@ void HPL_pdtrsv(HPL_T_grid* GRID, HPL_T_pmat* AMAT) {
   if(mycol != Alcol) {
     if(Anp) {
       size_t grid_size = (Anp + BLOCK_SIZE - 1) / BLOCK_SIZE;
-      setZero<<<grid_size, BLOCK_SIZE, 0, stream>>>(Anp, dXC);
+      setZero<<<grid_size, BLOCK_SIZE, 0, stream>>>(Anp, XC);
     }
   }
   /*
@@ -155,30 +150,29 @@ void HPL_pdtrsv(HPL_T_grid* GRID, HPL_T_pmat* AMAT) {
   n1 = Mmax(n1, nb);
 
   Anpprev = Anp;
-  dAprev = dAptr = Mptr(dAptr, 0, Anq, lda);
+  Aprev = Aptr = Mptr(Aptr, 0, Anq, lda);
   Xdprev         = XR;
-  dXdprev        = dXR;
+  Xdprev        = XR;
   tmp1           = n - kb;
   tmp1 -= (tmp2 = Mmin(tmp1, n1));
   MnumrocI(n1pprev, tmp2, Mmax(0, tmp1), nb, nb, myrow, 0, nprow);
 
   if(myrow == Alrow) { Anpprev = (Anp -= kb); }
   if(mycol == Alcol) {
-    dAprev = (dAptr -= lda * kb);
+    Aprev = (Aptr -= lda * kb);
     Anq -= kb;
     Xdprev  = (Xd = XR + Anq);
-    dXdprev = (dXd = dXR + Anq);
     if(myrow == Alrow) {
       rocblas_dtrsv(handle,
                     rocblas_fill_upper,
                     rocblas_operation_none,
                     rocblas_diagonal_non_unit,
                     kb,
-                    dAptr + Anp,
+                    Aptr + Anp,
                     lda,
-                    dXC + Anp,
+                    XC + Anp,
                     1);
-      rocblas_dcopy(handle, kb, dXC + Anp, 1, dXd, 1);
+      rocblas_dcopy(handle, kb, XC + Anp, 1, Xd, 1);
     }
   }
 
@@ -196,10 +190,9 @@ void HPL_pdtrsv(HPL_T_grid* GRID, HPL_T_pmat* AMAT) {
    */
   while(n > 0) {
     if(mycol == Alcol) {
-      dAptr -= lda * kb;
+      Aptr -= lda * kb;
       Anq -= kb;
       Xd  = XR + Anq;
-      dXd = dXR + Anq;
     }
     if(myrow == Alrow) { Anp -= kb; }
     /*
@@ -216,13 +209,13 @@ void HPL_pdtrsv(HPL_T_grid* GRID, HPL_T_pmat* AMAT) {
           if(kbprev) {
             hipDeviceSynchronize();
             (void)HPL_send(
-                dXdprev, kbprev, MModSub1(myrow, nprow), Cmsgid, Ccomm);
+                Xdprev, kbprev, MModSub1(myrow, nprow), Cmsgid, Ccomm);
           }
         }
       } else {
         if(kbprev) {
           (void)HPL_recv(
-              dXdprev, kbprev, MModAdd1(myrow, nprow), Cmsgid, Ccomm);
+              Xdprev, kbprev, MModAdd1(myrow, nprow), Cmsgid, Ccomm);
         }
       }
       /*
@@ -238,17 +231,17 @@ void HPL_pdtrsv(HPL_T_grid* GRID, HPL_T_pmat* AMAT) {
                       n1pprev,
                       kbprev,
                       &mone,
-                      dAprev + tmp1,
+                      Aprev + tmp1,
                       lda,
-                      dXdprev,
+                      Xdprev,
                       1,
                       &one,
-                      dXC + tmp1,
+                      XC + tmp1,
                       1);
         if(GridIsNotPx1) {
           if(n1pprev) {
             hipDeviceSynchronize();
-            (void)HPL_send(dXC + tmp1, n1pprev, Alcol, Rmsgid, Rcomm);
+            (void)HPL_send(XC + tmp1, n1pprev, Alcol, Rmsgid, Rcomm);
           }
         }
       }
@@ -260,7 +253,7 @@ void HPL_pdtrsv(HPL_T_grid* GRID, HPL_T_pmat* AMAT) {
         if(kbprev) {
           hipDeviceSynchronize();
           (void)HPL_send(
-              dXdprev, kbprev, MModSub1(myrow, nprow), Cmsgid, Ccomm);
+              Xdprev, kbprev, MModSub1(myrow, nprow), Cmsgid, Ccomm);
         }
       }
     } else if(mycol == Alcol) {
@@ -270,10 +263,10 @@ void HPL_pdtrsv(HPL_T_grid* GRID, HPL_T_pmat* AMAT) {
        */
       if(n1pprev > 0) {
         if(n1pprev) {
-          (void)HPL_recv(dW, n1pprev, colprev, Rmsgid, Rcomm);
+          (void)HPL_recv(W, n1pprev, colprev, Rmsgid, Rcomm);
           const double one = 1.0;
           rocblas_daxpy(
-              handle, n1pprev, &one, dW, 1, dXC + Anpprev - n1pprev, 1);
+              handle, n1pprev, &one, W, 1, XC + Anpprev - n1pprev, 1);
         }
       }
     }
@@ -286,11 +279,11 @@ void HPL_pdtrsv(HPL_T_grid* GRID, HPL_T_pmat* AMAT) {
                     rocblas_operation_none,
                     rocblas_diagonal_non_unit,
                     kb,
-                    dAptr + Anp,
+                    Aptr + Anp,
                     lda,
-                    dXC + Anp,
+                    XC + Anp,
                     1);
-      rocblas_dcopy(handle, kb, dXC + Anp, 1, dXR + Anq, 1);
+      rocblas_dcopy(handle, kb, XC + Anp, 1, XR + Anq, 1);
     }
     /*
      *  Finish previous update
@@ -303,21 +296,20 @@ void HPL_pdtrsv(HPL_T_grid* GRID, HPL_T_pmat* AMAT) {
                     tmp1,
                     kbprev,
                     &mone,
-                    dAprev,
+                    Aprev,
                     lda,
-                    dXdprev,
+                    Xdprev,
                     1,
                     &one,
-                    dXC,
+                    XC,
                     1);
     }
     /*
      *  Save info of current step and update info for the next step
      */
     if(mycol == Alcol) {
-      dAprev  = dAptr;
+      Aprev  = Aptr;
       Xdprev  = Xd;
-      dXdprev = dXd;
     }
     if(myrow == Alrow) { Anpprev -= kb; }
 
@@ -342,7 +334,7 @@ void HPL_pdtrsv(HPL_T_grid* GRID, HPL_T_pmat* AMAT) {
   if(mycol == colprev) {
     if(kbprev) {
       hipDeviceSynchronize();
-      (void)HPL_broadcast((void*)(dXR), kbprev, HPL_DOUBLE, rowprev, Ccomm);
+      (void)HPL_broadcast((void*)(XR), kbprev, HPL_DOUBLE, rowprev, Ccomm);
     }
   }
 

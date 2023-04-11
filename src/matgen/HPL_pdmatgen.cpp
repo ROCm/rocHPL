@@ -13,53 +13,6 @@
 #include <cassert>
 #include <unistd.h>
 
-const int max_nthreads = 128;
-
-static int Malloc(HPL_T_grid*  GRID,
-                  void**       ptr,
-                  const size_t bytes,
-                  int          info[3]) {
-
-  int mycol, myrow, npcol, nprow;
-  (void)HPL_grid_info(GRID, &nprow, &npcol, &myrow, &mycol);
-
-  unsigned long pg_size = sysconf(_SC_PAGESIZE);
-  int           err     = posix_memalign(ptr, pg_size, bytes);
-
-  /*Check allocation is valid*/
-  info[0] = (err != 0);
-  info[1] = myrow;
-  info[2] = mycol;
-  (void)HPL_all_reduce((void*)(info), 3, HPL_INT, HPL_MAX, GRID->all_comm);
-  if(info[0] != 0) {
-    return HPL_FAILURE;
-  } else {
-    return HPL_SUCCESS;
-  }
-}
-
-static int hostMalloc(HPL_T_grid*  GRID,
-                      void**       ptr,
-                      const size_t bytes,
-                      int          info[3]) {
-
-  int mycol, myrow, npcol, nprow;
-  (void)HPL_grid_info(GRID, &nprow, &npcol, &myrow, &mycol);
-
-  hipError_t err = hipHostMalloc(ptr, bytes);
-
-  /*Check allocation is valid*/
-  info[0] = (err != hipSuccess);
-  info[1] = myrow;
-  info[2] = mycol;
-  (void)HPL_all_reduce((void*)(info), 3, HPL_INT, HPL_MAX, GRID->all_comm);
-  if(info[0] != 0) {
-    return HPL_FAILURE;
-  } else {
-    return HPL_SUCCESS;
-  }
-}
-
 static int deviceMalloc(HPL_T_grid*  GRID,
                         void**       ptr,
                         const size_t bytes,
@@ -110,11 +63,10 @@ int HPL_pdmatgen(HPL_T_test* TEST,
 
   mat->nq = nq + 1;
 
-  mat->dA = nullptr;
-  mat->dX = nullptr;
+  mat->A = nullptr;
+  mat->X = nullptr;
 
-  mat->dW = nullptr;
-  mat->W  = nullptr;
+  mat->W = nullptr;
 
   /* Create a rocBLAS handle */
   rocblas_create_handle(&handle);
@@ -136,7 +88,7 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   }
 #endif
 
-  if(deviceMalloc(GRID, (void**)&(mat->dA), numbytes, info) != HPL_SUCCESS) {
+  if(deviceMalloc(GRID, (void**)&(mat->A), numbytes, info) != HPL_SUCCESS) {
     HPL_pwarn(TEST->outfp,
               __LINE__,
               "HPL_pdmatgen",
@@ -148,7 +100,7 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   }
 
   // seperate space for X vector
-  if(deviceMalloc(GRID, (void**)&(mat->dX), mat->nq * sizeof(double), info) !=
+  if(deviceMalloc(GRID, (void**)&(mat->X), mat->nq * sizeof(double), info) !=
      HPL_SUCCESS) {
     HPL_pwarn(TEST->outfp,
               __LINE__,
@@ -163,53 +115,16 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   int Anp;
   Mnumroc(Anp, mat->n, mat->nb, mat->nb, myrow, 0, nprow);
 
-  /*Need space for a column of panels for pdfact on CPU*/
-  size_t A_hostsize = mat->ld * mat->nb * sizeof(double);
-
-  if(hostMalloc(GRID, (void**)&(mat->A), A_hostsize, info) != HPL_SUCCESS) {
-    HPL_pwarn(TEST->outfp,
-              __LINE__,
-              "HPL_pdmatgen",
-              "[%d,%d] %s",
-              info[1],
-              info[2],
-              "Panel memory allocation failed. Skip.");
-    return HPL_FAILURE;
-  }
-
-#pragma omp parallel
-  {
-    /*First touch*/
-    const int thread_rank = omp_get_thread_num();
-    const int thread_size = omp_get_num_threads();
-    assert(thread_size <= max_nthreads);
-
-    for(int i = 0; i < mat->ld; i += NB) {
-      if((i / NB) % thread_size == thread_rank) {
-        const int mm = std::min(NB, mat->ld - i);
-        for(int k = 0; k < NB; ++k) {
-          for(int j = 0; j < mm; ++j) {
-            mat->A[j + i + static_cast<size_t>(mat->ld) * k] = 0.0;
-          }
-        }
-      }
-    }
-  }
-
-  size_t dworkspace_size = 0;
-  size_t workspace_size  = 0;
+  size_t workspace_size = 0;
 
   /*pdtrsv needs two vectors for B and W (and X on host) */
-  dworkspace_size = Mmax(2 * Anp * sizeof(double), dworkspace_size);
-  workspace_size  = Mmax((2 * Anp + nq) * sizeof(double), workspace_size);
+  workspace_size = Mmax(2 * Anp * sizeof(double), workspace_size);
 
   /*Scratch space for rows in pdlaswp (with extra space for padding) */
-  dworkspace_size =
-      Mmax((nq + mat->nb + 256) * mat->nb * sizeof(double), dworkspace_size);
   workspace_size =
       Mmax((nq + mat->nb + 256) * mat->nb * sizeof(double), workspace_size);
 
-  if(deviceMalloc(GRID, (void**)&(mat->dW), dworkspace_size, info) !=
+  if(deviceMalloc(GRID, (void**)&(mat->W), workspace_size, info) !=
      HPL_SUCCESS) {
     HPL_pwarn(TEST->outfp,
               __LINE__,
@@ -220,41 +135,22 @@ int HPL_pdmatgen(HPL_T_test* TEST,
               "Device memory allocation failed for U workspace. Skip.");
     return HPL_FAILURE;
   }
-  if(hostMalloc(GRID, (void**)&(mat->W), workspace_size, info) != HPL_SUCCESS) {
-    HPL_pwarn(TEST->outfp,
-              __LINE__,
-              "HPL_pdmatgen",
-              "[%d,%d] %s",
-              info[1],
-              info[2],
-              "Host memory allocation failed for U workspace. Skip.");
-    return HPL_FAILURE;
-  }
 
   return HPL_SUCCESS;
 }
 
 void HPL_pdmatfree(HPL_T_pmat* mat) {
 
-  if(mat->dA) {
-    hipFree(mat->dA);
-    mat->dA = nullptr;
-  }
-  if(mat->dX) {
-    hipFree(mat->dX);
-    mat->dX = nullptr;
-  }
-  if(mat->dW) {
-    hipFree(mat->dW);
-    mat->dW = nullptr;
-  }
-
   if(mat->A) {
-    hipHostFree(mat->A);
+    hipFree(mat->A);
     mat->A = nullptr;
   }
+  if(mat->X) {
+    hipFree(mat->X);
+    mat->X = nullptr;
+  }
   if(mat->W) {
-    hipHostFree(mat->W);
+    hipFree(mat->W);
     mat->W = nullptr;
   }
 

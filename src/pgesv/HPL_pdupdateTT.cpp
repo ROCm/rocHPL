@@ -45,22 +45,22 @@ void HPL_pdupdateTT(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   nb   = PANEL->nb;
   jb   = PANEL->jb;
   n    = PANEL->nq;
-  lda  = PANEL->dlda;
-  Aptr = PANEL->dA;
+  lda  = PANEL->lda;
+  Aptr = PANEL->A;
 
   if(UPD == HPL_LOOK_AHEAD) {
-    Uptr = PANEL->dU;
+    Uptr = PANEL->U;
     LDU  = PANEL->ldu0;
     n    = Mmin(PANEL->nu0, n);
   } else if(UPD == HPL_UPD_1) {
-    Uptr = PANEL->dU1;
+    Uptr = PANEL->U1;
     LDU  = PANEL->ldu1;
     n    = Mmin(PANEL->nu1, n);
     // we call the row swap start before the first section is updated
     //  so shift the pointers
     Aptr = Mptr(Aptr, 0, PANEL->nu0, lda);
   } else if(UPD == HPL_UPD_2) {
-    Uptr = PANEL->dU2;
+    Uptr = PANEL->U2;
     LDU  = PANEL->ldu2;
     n    = Mmin(PANEL->nu2, n);
     // we call the row swap start before the first section is updated
@@ -77,9 +77,9 @@ void HPL_pdupdateTT(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   rocblas_get_stream(handle, &stream);
 
   curr  = (PANEL->grid->myrow == PANEL->prow ? 1 : 0);
-  L2ptr = PANEL->dL2;
-  L1ptr = PANEL->dL1;
-  ldl2  = PANEL->dldl2;
+  L2ptr = PANEL->L2;
+  L1ptr = PANEL->L1;
+  ldl2  = PANEL->ldl2;
   mp    = PANEL->mp - (curr != 0 ? jb : 0);
 
   const double one  = 1.0;
