@@ -50,6 +50,8 @@ void HPL_pdpanel_SendToDevice(HPL_T_panel* PANEL) {
       for(i = 0; i < jb; i++) { ipiv[i] -= PANEL->ii; } // shift
       HPL_unroll_ipiv(PANEL->mp, jb, ipiv, ipiv_ex, upiv);
 
+      for(i = 0; i < jb; i++) { ipiv[i] = upiv[i];}
+
     } else {
 
       int  k       = (int)((unsigned int)(jb) << 1);
