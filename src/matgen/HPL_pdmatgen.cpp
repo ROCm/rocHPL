@@ -119,7 +119,6 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   /* Create a rocBLAS handle */
   rocblas_create_handle(&handle);
   rocblas_set_pointer_mode(handle, rocblas_pointer_mode_host);
-  rocblas_initialize();
   rocblas_set_stream(handle, computeStream);
 
   /*
@@ -230,6 +229,24 @@ int HPL_pdmatgen(HPL_T_test* TEST,
               "Host memory allocation failed for U workspace. Skip.");
     return HPL_FAILURE;
   }
+
+  // Do a single DGEMM call to rocblas to load the library
+  int n = std::min(NB, std::min(nq, mat->mp));
+  double one = 1.0;
+  rocblas_dgemm(handle,
+                rocblas_operation_none,
+                rocblas_operation_transpose,
+                n,
+                n,
+                n,
+                &one,
+                mat->dA,
+                mat->ld,
+                mat->dA,
+                mat->ld,
+                &one,
+                mat->dA,
+                mat->ld);
 
   return HPL_SUCCESS;
 }
