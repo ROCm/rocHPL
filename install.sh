@@ -143,10 +143,9 @@ install_openmpi( )
 
   if [ ! -d "./tpl/ucx" ]; then
     mkdir -p tpl && cd tpl
-    git clone --branch master https://github.com/openucx/ucx.git ucx
+    git clone --branch v1.14.1 https://github.com/openucx/ucx.git ucx
     check_exit_code 2
     cd ucx;
-    git checkout b38c71e94ccbbafbaa308f04ad2539425f345483
     ./autogen.sh; ./autogen.sh #why do we have to run this twice?
     check_exit_code 2
     mkdir build; cd build
@@ -162,7 +161,6 @@ install_openmpi( )
        ([ ! -f "${ucx_lib64_folder}/libucm.so" ] || [ ! -f "${ucx_lib64_folder}/libucp.so" ]  || \
         [ ! -f "${ucx_lib64_folder}/libucs.so" ] || [ ! -f "${ucx_lib64_folder}/libuct.so" ]); then
     cd tpl/ucx; 
-    git checkout b38c71e94ccbbafbaa308f04ad2539425f345483
     ./autogen.sh; ./autogen.sh
     check_exit_code 2
     mkdir build; cd build
@@ -186,7 +184,7 @@ install_openmpi( )
 
   if [ ! -d "./tpl/openmpi" ]; then
     mkdir -p tpl && cd tpl
-    git clone --branch v4.1.4 https://github.com/open-mpi/ompi.git openmpi
+    git clone --branch v4.1.5 https://github.com/open-mpi/ompi.git openmpi
     check_exit_code 2
     cd openmpi; ./autogen.pl;
     check_exit_code 2
