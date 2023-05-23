@@ -95,9 +95,7 @@ void HPL_pdpanel_new(HPL_T_grid*   GRID,
   p->free_work_now        = 0;
   p->A                    = NULL;
   p->LWORK                = NULL;
-  p->dLWORK               = NULL;
   p->UWORK                = NULL;
-  p->dUWORK               = NULL;
   p->fWORK                = NULL;
   p->IWORK                = NULL;
   HPL_pdpanel_init(GRID, ALGO, M, N, JB, A, IA, JA, TAG, p);

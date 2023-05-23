@@ -33,8 +33,6 @@ option(ROCM_PATH "Path to ROCm install" /opt/rocm)
 option(HPL_BLAS_DIR "Path to CPU BLAS library" ${CMAKE_CURRENT_SOURCE_DIR}/tpl/openblas)
 option(HPL_MPI_DIR  "Path to MPI library" ${CMAKE_CURRENT_SOURCE_DIR}/tpl/openmpi)
 
-option(HPL_OPENMPI_UCX "Compile WITH OpenMPI+UCX support." OFF)
-
 set(CMAKE_INSTALL_PREFIX "rocHPL" CACHE PATH "Install path prefix, prepended onto install directories")
 
 # CMake modules
@@ -115,7 +113,7 @@ set(TARGETS "${DEFAULT_AMDGPU_TARGETS}" CACHE STRING "List of specific machine t
 
 # AMD targets
 foreach(target ${TARGETS})
-  list(APPEND HIP_HIPCC_FLAGS "--amdgpu-target=${target}")
+  list(APPEND HIP_HIPCC_FLAGS "--offload-arch=${target}")
 endforeach()
 
 # Target executable

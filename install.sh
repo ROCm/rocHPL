@@ -90,7 +90,13 @@ exit_with_error( )
 check_exit_code( )
 {
   if (( $? != 0 )); then
-    exit $@
+    err=$1
+    msg=$2
+    if [[ "$msg" == "" ]]; then
+      msg="Unknown error"
+    fi
+    echo "ERROR: $msg"
+    exit $err
   fi
 }
 
@@ -100,7 +106,7 @@ install_blis( )
 {
   if [ ! -d "./tpl/blis" ]; then
     mkdir -p tpl && cd tpl
-    git clone https://github.com/amd/blis --branch 3.1
+    git clone https://github.com/amd/blis --branch 4.0
     check_exit_code 2
     cd blis; ./configure --prefix=${PWD} --enable-cblas --disable-sup-handling auto;
     check_exit_code 2
@@ -246,7 +252,6 @@ with_rocm=/opt/rocm
 with_mpi=tpl/openmpi
 with_rocblas=/opt/rocm/rocblas
 with_cpublas=tpl/blis/lib
-openmpi_ucx=false
 verbose_print=true
 progress_report=true
 detailed_timing=true
@@ -343,9 +348,7 @@ pushd .
   # #################################################
   if [[ "${with_mpi}" == tpl/openmpi ]]; then
 
-    #gpu_aware_mpi=ON #turn on GPU-aware MPI when using internal MPI library
     with_mpi=${PWD}/tpl/openmpi
-    openmpi_ucx=true
     install_openmpi
 
   fi
@@ -375,16 +378,18 @@ pushd .
   fi
   shopt -u nocasematch
 
-  if [[ "${openmpi_ucx}" == true ]]; then
-    cmake_common_options="${cmake_common_options} -DHPL_OPENMPI_UCX=ON"
-  fi
-
   # Build library with AMD toolchain because of existence of device kernels
   mkdir -p ${build_dir} && cd ${build_dir}
   ${cmake_executable} ${cmake_common_options} ..
   check_exit_code 2
 
-  make -j$(nproc) install
+  if [[ -e build.ninja ]]; then
+    command -v ninja > /dev/null 2>&1
+    check_exit_code 2 "Ninja command was not found, but is required by CMake config"
+    ninja install
+  else
+    make -j$(nproc) install
+  fi
   check_exit_code 2
 
 popd

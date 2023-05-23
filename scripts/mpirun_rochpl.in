@@ -85,7 +85,6 @@ supported_distro
 rochpl_bin=@CMAKE_INSTALL_PREFIX@/bin/rochpl
 mpi_bin=@MPIEXEC_EXECUTABLE@
 rochpl_runscript=$(dirname "$0")/run_rochpl #assume run_rochpl is in the same location
-openmpi_ucx=@HPL_OPENMPI_UCX@
 
 P=1
 Q=1
@@ -98,6 +97,29 @@ frac=0.6
 filename=HPL.dat
 inputfile=false
 cmdrun=false
+
+# #################################################
+# MPI Args
+# #################################################
+# count the number of physical cores
+num_cpu_cores=$(lscpu | grep "Core(s)" | awk '{print $4}')
+num_cpu_sockets=$(lscpu | grep Socket | awk '{print $2}')
+total_cpu_cores=$(($num_cpu_cores*$num_cpu_sockets))
+
+#Default MPI options
+mpi_args=
+
+#Check if using OpenMPI
+if [[ $(${mpi_bin} --version | grep "open-mpi") ]]; then
+  mpi_args+=" --map-by node:PE=${total_cpu_cores} --bind-to core:overload-allowed"
+
+  #Check if this is OpenMPI+UCX
+  ompi_info=$(dirname ${mpi_bin})/ompi_info
+  if [[ $(${ompi_info} | grep "MCA pml: ucx") ]]; then
+    # ucx-specific args
+    mpi_args="--mca pml ucx --mca btl ^vader,tcp,openib,uct ${mpi_args}"
+  fi
+fi
 
 # #################################################
 # Parameter parsing
@@ -126,7 +148,7 @@ while true; do
         exit 0
         ;;
     --version)
-        ${mpi_bin} -np 1 ${rochpl_bin} --version
+        ${mpi_bin} -np 1 ${mpi_args} ${rochpl_runscript} --version
         exit 0
         ;;
     -P)
@@ -173,19 +195,6 @@ np=$(($P*$Q))
 if [[ "$np" -lt 1 ]]; then
   echo "Invalid MPI grid parameters; aborting";
   exit 1
-fi
-
-# count the number of physical cores
-num_cpu_cores=$(lscpu | grep "Core(s)" | awk '{print $4}')
-num_cpu_sockets=$(lscpu | grep Socket | awk '{print $2}')
-total_cpu_cores=$(($num_cpu_cores*$num_cpu_sockets))
-
-#Default MPI options
-mpi_args="--map-by node:PE=${total_cpu_cores} --bind-to core:overload-allowed"
-
-if [[ ${openmpi_ucx} == ON ]]; then
-  # run with openmpi + ucx
-  mpi_args="--mca pml ucx --mca btl ^vader,tcp,openib,uct ${mpi_args}"
 fi
 
 if [[ "${inputfile}" == true ]]; then

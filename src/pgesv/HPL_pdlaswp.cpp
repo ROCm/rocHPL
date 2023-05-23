@@ -37,11 +37,9 @@ void HPL_pdlaswp_start(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   /*
    * .. Local Variables ..
    */
-  double *U, *W;
-  double *dA, *dU, *dW;
+  double *A, *U, *W;
   int *   ipID, *iplen, *ipcounts, *ipoffsets, *iwork,
-      *lindxU = NULL, *lindxA = NULL, *lindxAU, *permU;
-  int *dlindxU = NULL, *dlindxA = NULL, *dlindxAU, *dpermU, *dpermU_ex;
+      *lindxU = NULL, *lindxA = NULL, *lindxAU, *permU, *permU_ex;
   int  icurrow, *iflag, *ipA, *ipl, jb, k, lda, myrow, n, nprow, LDU, LDW;
 
   /* ..
@@ -62,15 +60,13 @@ void HPL_pdlaswp_start(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   // quick return if we're 1xQ
   if(nprow == 1) return;
 
-  dA      = PANEL->dA;
-  lda     = PANEL->dlda;
+  A      = PANEL->A;
+  lda     = PANEL->lda;
   icurrow = PANEL->prow;
 
   if(UPD == HPL_LOOK_AHEAD) {
     U   = PANEL->U;
     W   = PANEL->W;
-    dU  = PANEL->dU;
-    dW  = PANEL->dW;
     LDU = PANEL->ldu0;
     LDW = PANEL->ldu0;
     n   = PANEL->nu0;
@@ -78,26 +74,22 @@ void HPL_pdlaswp_start(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   } else if(UPD == HPL_UPD_1) {
     U   = PANEL->U1;
     W   = PANEL->W1;
-    dU  = PANEL->dU1;
-    dW  = PANEL->dW1;
     LDU = PANEL->ldu1;
     LDW = PANEL->ldu1;
     n   = PANEL->nu1;
     // we call the row swap start before the first section is updated
     //  so shift the pointers
-    dA = Mptr(dA, 0, PANEL->nu0, lda);
+    A = Mptr(A, 0, PANEL->nu0, lda);
 
   } else if(UPD == HPL_UPD_2) {
     U   = PANEL->U2;
     W   = PANEL->W2;
-    dU  = PANEL->dU2;
-    dW  = PANEL->dW2;
     LDU = PANEL->ldu2;
     LDW = PANEL->ldu2;
     n   = PANEL->nu2;
     // we call the row swap start before the first section is updated
     //  so shift the pointers
-    dA = Mptr(dA, 0, PANEL->nu0 + PANEL->nu1, lda);
+    A = Mptr(A, 0, PANEL->nu0 + PANEL->nu1, lda);
   }
 
   /*
@@ -126,28 +118,10 @@ void HPL_pdlaswp_start(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   lindxA  = PANEL->lindxA;
   lindxAU = PANEL->lindxAU;
   permU   = PANEL->permU;
-
-  dlindxU   = PANEL->dlindxU;
-  dlindxA   = PANEL->dlindxA;
-  dlindxAU  = PANEL->dlindxAU;
-  dpermU    = PANEL->dpermU;
-  dpermU_ex = dpermU + jb;
+  permU_ex = permU + jb;
 
   if(*iflag == -1) /* no index arrays have been computed so far */
   {
-    // get the ipivs on the host after the Bcast
-    if(PANEL->grid->mycol != PANEL->pcol) {
-      hipMemcpy2DAsync(PANEL->ipiv,
-                       PANEL->jb * sizeof(int),
-                       PANEL->dipiv,
-                       PANEL->jb * sizeof(int),
-                       PANEL->jb * sizeof(int),
-                       1,
-                       hipMemcpyDeviceToHost,
-                       dataStream);
-    }
-    hipStreamSynchronize(dataStream);
-
     // compute spreading info
     HPL_pipid(PANEL, ipl, ipID);
     HPL_plindx(
@@ -164,16 +138,16 @@ void HPL_pdlaswp_start(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    */
   if(myrow == icurrow) {
     // copy needed rows of A into U
-    HPL_dlaswp01T(jb, n, dA, lda, dU, LDU, dlindxU);
+    HPL_dlaswp01T(jb, n, A, lda, U, LDU, lindxU);
   } else {
     // copy needed rows from A into U(:, iplen[myrow])
     HPL_dlaswp03T(iplen[myrow + 1] - iplen[myrow],
                   n,
-                  dA,
+                  A,
                   lda,
-                  Mptr(dU, 0, iplen[myrow], LDU),
+                  Mptr(U, 0, iplen[myrow], LDU),
                   LDU,
-                  dlindxU);
+                  lindxU);
   }
 
   // record when packing completes
@@ -219,11 +193,9 @@ void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   /*
    * .. Local Variables ..
    */
-  double *U, *W;
-  double *dA, *dU, *dW;
-  int *   ipID, *iplen, *ipcounts, *ipoffsets, *iwork,
-      *lindxU = NULL, *lindxA = NULL, *lindxAU, *permU;
-  int *dlindxU = NULL, *dlindxA = NULL, *dlindxAU, *dpermU, *dpermU_ex;
+  double *A, *U, *W;
+  int *   ipID, *iplen, *ipcounts, *ipoffsets, *iwork;
+  int *lindxU = NULL, *lindxA = NULL, *lindxAU, *permU, *permU_ex;
   int  icurrow, *iflag, *ipA, *ipl, jb, k, lda, myrow, n, nprow, LDU, LDW;
 
   /* ..
@@ -244,15 +216,13 @@ void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   // quick return if we're 1xQ
   if(nprow == 1) return;
 
-  dA      = PANEL->dA;
-  lda     = PANEL->dlda;
+  A      = PANEL->A;
+  lda     = PANEL->lda;
   icurrow = PANEL->prow;
 
   if(UPD == HPL_LOOK_AHEAD) {
     U   = PANEL->U;
     W   = PANEL->W;
-    dU  = PANEL->dU;
-    dW  = PANEL->dW;
     LDU = PANEL->ldu0;
     LDW = PANEL->ldu0;
     n   = PANEL->nu0;
@@ -260,26 +230,22 @@ void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   } else if(UPD == HPL_UPD_1) {
     U   = PANEL->U1;
     W   = PANEL->W1;
-    dU  = PANEL->dU1;
-    dW  = PANEL->dW1;
     LDU = PANEL->ldu1;
     LDW = PANEL->ldu1;
     n   = PANEL->nu1;
     // we call the row swap start before the first section is updated
     //  so shift the pointers
-    dA = Mptr(dA, 0, PANEL->nu0, lda);
+    A = Mptr(A, 0, PANEL->nu0, lda);
 
   } else if(UPD == HPL_UPD_2) {
     U   = PANEL->U2;
     W   = PANEL->W2;
-    dU  = PANEL->dU2;
-    dW  = PANEL->dW2;
     LDU = PANEL->ldu2;
     LDW = PANEL->ldu2;
     n   = PANEL->nu2;
     // we call the row swap start before the first section is updated
     //  so shift the pointers
-    dA = Mptr(dA, 0, PANEL->nu0 + PANEL->nu1, lda);
+    A = Mptr(A, 0, PANEL->nu0 + PANEL->nu1, lda);
   }
 
   /*
@@ -308,12 +274,7 @@ void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   lindxAU = PANEL->lindxAU;
   lindxU  = PANEL->lindxU;
   permU   = PANEL->permU;
-
-  dlindxA   = PANEL->dlindxA;
-  dlindxAU  = PANEL->dlindxAU;
-  dlindxU   = PANEL->dlindxU;
-  dpermU    = PANEL->dpermU;
-  dpermU_ex = dpermU + jb;
+  permU_ex = permU + jb;
 
   /* Set MPI message counts and offsets */
   ipcounts[0]  = (iplen[1] - iplen[0]) * LDU;
@@ -348,10 +309,10 @@ void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
 #endif
 
     // send rows to other ranks
-    HPL_scatterv(dU, ipcounts, ipoffsets, ipcounts[myrow], icurrow, comm);
+    HPL_scatterv(U, ipcounts, ipoffsets, ipcounts[myrow], icurrow, comm);
 
-    // All gather dU
-    HPL_allgatherv(dU, ipcounts[myrow], ipcounts, ipoffsets, comm);
+    // All gather U
+    HPL_allgatherv(U, ipcounts[myrow], ipcounts, ipoffsets, comm);
 
 #ifdef HPL_DETAILED_TIMING
     HPL_ptimer(HPL_TIMING_LASWP);
@@ -363,7 +324,7 @@ void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
     HPL_ptimer(HPL_TIMING_UPDATE);
 #endif
 
-    // wait for dU to be ready
+    // wait for U to be ready
     // hipStreamSynchronize(computeStream);
     hipEventSynchronize(swapStartEvent[UPD]);
 
@@ -372,11 +333,11 @@ void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
     HPL_ptimer(HPL_TIMING_LASWP);
 #endif
 
-    // receive rows from icurrow into dW
-    HPL_scatterv(dW, ipcounts, ipoffsets, ipcounts[myrow], icurrow, comm);
+    // receive rows from icurrow into W
+    HPL_scatterv(W, ipcounts, ipoffsets, ipcounts[myrow], icurrow, comm);
 
-    // All gather dU
-    HPL_allgatherv(dU, ipcounts[myrow], ipcounts, ipoffsets, comm);
+    // All gather U
+    HPL_allgatherv(U, ipcounts[myrow], ipcounts, ipoffsets, comm);
 
 #ifdef HPL_DETAILED_TIMING
     HPL_ptimer(HPL_TIMING_LASWP);
@@ -410,11 +371,9 @@ void HPL_pdlaswp_end(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   /*
    * .. Local Variables ..
    */
-  double *U, *W;
-  double *dA, *dU, *dW;
-  int *   ipID, *iplen, *ipcounts, *ipoffsets, *iwork, *lindxA = NULL, *lindxAU,
-                                                    *permU;
-  int *dlindxA = NULL, *dlindxAU, *dlindxU, *dpermU, *dpermU_ex;
+  double *A, *U, *W;
+  int *   ipID, *iplen, *ipcounts, *ipoffsets, *iwork;
+  int *lindxA = NULL, *lindxAU, *lindxU, *permU, *permU_ex;
   int  icurrow, *iflag, *ipA, *ipl, jb, k, lda, myrow, n, nprow, LDU, LDW;
 
   /* ..
@@ -432,15 +391,13 @@ void HPL_pdlaswp_end(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
 
   MPI_Comm comm = PANEL->grid->col_comm;
 
-  dA      = PANEL->dA;
-  lda     = PANEL->dlda;
+  A      = PANEL->A;
+  lda     = PANEL->lda;
   icurrow = PANEL->prow;
 
   if(UPD == HPL_LOOK_AHEAD) {
     U   = PANEL->U;
     W   = PANEL->W;
-    dU  = PANEL->dU;
-    dW  = PANEL->dW;
     LDU = PANEL->ldu0;
     LDW = PANEL->ldu0;
     n   = PANEL->nu0;
@@ -448,26 +405,22 @@ void HPL_pdlaswp_end(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   } else if(UPD == HPL_UPD_1) {
     U   = PANEL->U1;
     W   = PANEL->W1;
-    dU  = PANEL->dU1;
-    dW  = PANEL->dW1;
     LDU = PANEL->ldu1;
     LDW = PANEL->ldu1;
     n   = PANEL->nu1;
     // we call the row swap start before the first section is updated
     //  so shift the pointers
-    dA = Mptr(dA, 0, PANEL->nu0, lda);
+    A = Mptr(A, 0, PANEL->nu0, lda);
 
   } else if(UPD == HPL_UPD_2) {
     U   = PANEL->U2;
     W   = PANEL->W2;
-    dU  = PANEL->dU2;
-    dW  = PANEL->dW2;
     LDU = PANEL->ldu2;
     LDW = PANEL->ldu2;
     n   = PANEL->nu2;
     // we call the row swap start before the first section is updated
     //  so shift the pointers
-    dA = Mptr(dA, 0, PANEL->nu0 + PANEL->nu1, lda);
+    A = Mptr(A, 0, PANEL->nu0 + PANEL->nu1, lda);
   }
 
   /*
@@ -477,7 +430,7 @@ void HPL_pdlaswp_end(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
 
   // just local swaps if we're 1xQ
   if(nprow == 1) {
-    HPL_dlaswp00N(jb, n, dA, lda, PANEL->dipiv);
+    HPL_dlaswp00N(jb, n, A, lda, PANEL->ipiv);
     return;
   }
 
@@ -499,11 +452,11 @@ void HPL_pdlaswp_end(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   lindxAU = PANEL->lindxAU;
   permU   = PANEL->permU;
 
-  dlindxA   = PANEL->dlindxA;
-  dlindxAU  = PANEL->dlindxAU;
-  dlindxU   = PANEL->dlindxU;
-  dpermU    = PANEL->dpermU;
-  dpermU_ex = dpermU + jb;
+  lindxA   = PANEL->lindxA;
+  lindxAU  = PANEL->lindxAU;
+  lindxU   = PANEL->lindxU;
+  permU    = PANEL->permU;
+  permU_ex = permU + jb;
 
   /*
    * For i in [0..2*jb),  lindxA[i] is the offset in A of a row that ulti-
@@ -515,17 +468,17 @@ void HPL_pdlaswp_end(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
 
   if(myrow == icurrow) {
     // swap rows local to A on device
-    HPL_dlaswp02T(*ipA, n, dA, lda, dlindxAU, dlindxA);
+    HPL_dlaswp02T(*ipA, n, A, lda, lindxAU, lindxA);
   } else {
     // Queue inserting recieved rows in W into A on device
     HPL_dlaswp04T(
-        iplen[myrow + 1] - iplen[myrow], n, dA, lda, dW, LDW, dlindxU);
+        iplen[myrow + 1] - iplen[myrow], n, A, lda, W, LDW, lindxU);
   }
 
   /*
    * Permute U in every process row
    */
-  HPL_dlaswp10N(n, jb, dU, LDU, dpermU);
+  HPL_dlaswp10N(n, jb, U, LDU, permU);
   /*
    * End of HPL_pdlaswp_endT
    */

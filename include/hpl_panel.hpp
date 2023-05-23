@@ -33,40 +33,23 @@ typedef struct HPL_S_panel {
   struct HPL_S_palg* algo;   /* ptr to the algo parameters */
   struct HPL_S_pmat* pmat;   /* ptr to the local array info */
   double*            A;      /* ptr to trailing part of A */
-  double*            dA;     /* ptr to trailing part of A */
   double*            LWORK;  /* L work space */
-  double*            dLWORK; /* L device-copy work space */
   double*            UWORK;  /* U work space */
-  double*            dUWORK; /* U device-copy work space */
   double*            fWORK;  /* pdfact work space */
   double*            L2;     /* ptr to L */
   double*            L1;     /* ptr to jb x jb upper block of A */
-  double*            dL2;    /* ptr to L */
-  double*            dL1;    /* ptr to jb x jb upper block of A */
   double*            DINFO;  /* ptr to replicated scalar info */
-  double*            dDINFO; /* ptr to replicated scalar info */
   int*               ipiv;
-  int*               dipiv;
   int*               lindxA;
-  int*               dlindxA;
   int*               lindxAU;
-  int*               dlindxAU;
   int*               lindxU;
-  int*               dlindxU;
   int*               permU;
-  int*               dpermU;
   double*            U;   /* ptr to U */
-  double*            dU;  /* ptr to U */
   double*            W;   /* ptr to W */
-  double*            dW;  /* ptr to W */
   double*            U1;  /* ptr to U1 */
-  double*            dU1; /* ptr to U1 */
   double*            W1;  /* ptr to W1 */
-  double*            dW1; /* ptr to W1 */
   double*            U2;  /* ptr to U2 */
-  double*            dU2; /* ptr to U2 */
   double*            W2;  /* ptr to W2 */
-  double*            dW2; /* ptr to W2 */
   int                nu0;
   int                nu1;
   int                nu2;
@@ -90,12 +73,10 @@ typedef struct HPL_S_panel {
   int                ii;         /* local row index of trailing part of A */
   int                jj;         /* local col index of trailing part of A */
   int                lda;        /* local leading dim of array A */
-  int                dlda;       /* local leading dim of array A */
   int                prow;       /* proc. row owning 1st row of trail. A */
   int                pcol;       /* proc. col owning 1st col of trail. A */
   int                msgid;      /* message id for panel bcast */
   int                ldl2;       /* local leading dim of array L2 */
-  int                dldl2;      /* local leading dim of array L2 */
   int                len;        /* length of the buffer to broadcast */
   unsigned int       max_pinned_work_size; /* largest size of pinned A space */
   unsigned int       max_lwork_size;       /* largest size of WORK space */

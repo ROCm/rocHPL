@@ -46,7 +46,7 @@ int HPL_pdpanel_bcast(HPL_T_panel* PANEL) {
   /*
    * Single Bcast call
    */
-  int err = HPL_bcast(PANEL->dL2, PANEL->len, root, comm, PANEL->algo->btopo);
+  int err = HPL_bcast(PANEL->L2, PANEL->len, root, comm, PANEL->algo->btopo);
 
 #ifdef HPL_DETAILED_TIMING
   HPL_ptimer(HPL_TIMING_LBCAST);
