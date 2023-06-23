@@ -129,14 +129,15 @@ void HPL_pdtrsv(HPL_T_grid* GRID, HPL_T_pmat* AMAT) {
   if(Anp > 0) {
     if(Alcol != Bcol) {
       if(mycol == Bcol) {
-        hipMemcpy(dXC, dB, Anp * sizeof(double), hipMemcpyDeviceToDevice);
+        hipMemcpyAsync(dXC, dB, Anp * sizeof(double), hipMemcpyDeviceToDevice, stream);
+        hipStreamSynchronize(stream);
         (void)HPL_send(dXC, Anp, Alcol, Rmsgid, Rcomm);
       } else if(mycol == Alcol) {
         (void)HPL_recv(dXC, Anp, Bcol, Rmsgid, Rcomm);
       }
     } else {
       if(mycol == Bcol) {
-        hipMemcpy(dXC, dB, Anp * sizeof(double), hipMemcpyDeviceToDevice);
+        hipMemcpyAsync(dXC, dB, Anp * sizeof(double), hipMemcpyDeviceToDevice, stream);
       }
     }
   }
