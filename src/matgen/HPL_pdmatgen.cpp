@@ -122,6 +122,12 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   rocblas_initialize();
   rocblas_set_stream(handle, computeStream);
 
+#ifdef HPL_ROCBLAS_ALLOW_ATOMICS
+  rocblas_set_atomics_mode(handle, rocblas_atomics_allowed);
+#else
+  rocblas_set_atomics_mode(handle, rocblas_atomics_not_allowed);
+#endif
+
   /*
    * Allocate dynamic memory
    */

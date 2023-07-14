@@ -28,6 +28,13 @@
 //#define HPL_USE_COLLECTIVES
 
 /*
+Enabling atomics will potentially allow more performance optimization
+but will potentailly lead to residual values which vary from run-to-run
+*/
+#undef HPL_ROCBLAS_ALLOW_ATOMICS
+// #define HPL_ROCBLAS_ALLOW_ATOMICS
+
+/*
  * ---------------------------------------------------------------------
  * Include files
  * ---------------------------------------------------------------------
