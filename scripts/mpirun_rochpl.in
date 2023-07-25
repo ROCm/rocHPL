@@ -111,7 +111,7 @@ mpi_args=
 
 #Check if using OpenMPI
 if [[ $(${mpi_bin} --version | grep "open-mpi") ]]; then
-  mpi_args+=" --map-by node:PE=${total_cpu_cores} --bind-to core:overload-allowed"
+  mpi_args+=" --map-by node --rank-by node --bind-to none "
 
   #Check if this is OpenMPI+UCX
   ompi_info=$(dirname ${mpi_bin})/ompi_info
