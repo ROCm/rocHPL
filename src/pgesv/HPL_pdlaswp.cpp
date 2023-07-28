@@ -137,16 +137,16 @@ void HPL_pdlaswp_start(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   {
     // get the ipivs on the host after the Bcast
     if(PANEL->grid->mycol != PANEL->pcol) {
-      hipMemcpy2DAsync(PANEL->ipiv,
+      CHECK_HIP_ERROR(hipMemcpy2DAsync(PANEL->ipiv,
                        PANEL->jb * sizeof(int),
                        PANEL->dipiv,
                        PANEL->jb * sizeof(int),
                        PANEL->jb * sizeof(int),
                        1,
                        hipMemcpyDeviceToHost,
-                       dataStream);
+                       dataStream));
     }
-    hipStreamSynchronize(dataStream);
+    CHECK_HIP_ERROR(hipStreamSynchronize(dataStream));
 
     // compute spreading info
     HPL_pipid(PANEL, ipl, ipID);
@@ -177,7 +177,7 @@ void HPL_pdlaswp_start(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   }
 
   // record when packing completes
-  hipEventRecord(swapStartEvent[UPD], computeStream);
+  CHECK_HIP_ERROR(hipEventRecord(swapStartEvent[UPD], computeStream));
 
   /*
    * End of HPL_pdlaswp_start
@@ -340,7 +340,7 @@ void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
 #endif
 
     // hipStreamSynchronize(computeStream);
-    hipEventSynchronize(swapStartEvent[UPD]);
+    CHECK_HIP_ERROR(hipEventSynchronize(swapStartEvent[UPD]));
 
 #ifdef HPL_DETAILED_TIMING
     HPL_ptimer(HPL_TIMING_UPDATE);
@@ -365,7 +365,7 @@ void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
 
     // wait for dU to be ready
     // hipStreamSynchronize(computeStream);
-    hipEventSynchronize(swapStartEvent[UPD]);
+    CHECK_HIP_ERROR(hipEventSynchronize(swapStartEvent[UPD]));
 
 #ifdef HPL_DETAILED_TIMING
     HPL_ptimer(HPL_TIMING_UPDATE);

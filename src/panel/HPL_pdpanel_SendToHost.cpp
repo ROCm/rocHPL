@@ -17,12 +17,12 @@ void HPL_pdpanel_SendToHost(HPL_T_panel* PANEL) {
   if((PANEL->grid->mycol != PANEL->pcol) || (jb <= 0)) return;
 
   if(PANEL->mp > 0)
-    hipMemcpy2DAsync(PANEL->A,
+    CHECK_HIP_ERROR(hipMemcpy2DAsync(PANEL->A,
                      PANEL->lda * sizeof(double),
                      PANEL->dA,
                      PANEL->dlda * sizeof(double),
                      PANEL->mp * sizeof(double),
                      jb,
                      hipMemcpyDeviceToHost,
-                     dataStream);
+                     dataStream));
 }

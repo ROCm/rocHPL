@@ -99,7 +99,7 @@ void HPL_dlaswp02T(const int  M,
   dim3 grid_size(N);
   dim3 block_size(M);
   dlaswp02T<<<N, M, 0, computeStream>>>(M, N, A, LDA, LINDXAU, LINDXA);
-
+  CHECK_HIP_ERROR(hipGetLastError());
   /*
    * End of HPL_dlaswp02T
    */

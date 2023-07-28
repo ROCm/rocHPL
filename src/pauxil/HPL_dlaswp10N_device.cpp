@@ -84,8 +84,9 @@ void HPL_dlaswp10N(const int  M,
   if((M <= 0) || (N <= 0)) return;
 
   hipStream_t stream;
-  rocblas_get_stream(handle, &stream);
+  CHECK_ROCBLAS_ERROR(rocblas_get_stream(handle, &stream));
 
   dim3 grid_size((M + BLOCK_SIZE - 1) / BLOCK_SIZE);
   dlaswp10N<<<grid_size, dim3(BLOCK_SIZE), 0, stream>>>(M, N, A, LDA, IPIV);
+  CHECK_HIP_ERROR(hipGetLastError());
 }

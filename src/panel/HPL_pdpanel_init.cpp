@@ -277,7 +277,7 @@ void HPL_pdpanel_init(HPL_T_grid*  GRID,
 
   if(PANEL->max_lwork_size < (size_t)(lwork) * sizeof(double)) {
     if(PANEL->LWORK) {
-      hipFree(PANEL->dLWORK);
+      CHECK_HIP_ERROR(hipFree(PANEL->dLWORK));
       free(PANEL->LWORK);
     }
     // size_t numbytes = (((size_t)((size_t)(lwork) * sizeof( double )) +
@@ -299,7 +299,7 @@ void HPL_pdpanel_init(HPL_T_grid*  GRID,
   }
   if(PANEL->max_uwork_size < (size_t)(uwork) * sizeof(double)) {
     if(PANEL->UWORK) {
-      hipFree(PANEL->dUWORK);
+      CHECK_HIP_ERROR(hipFree(PANEL->dUWORK));
       free(PANEL->UWORK);
     }
     // size_t numbytes = (((size_t)((size_t)(uwork) * sizeof( double )) +
