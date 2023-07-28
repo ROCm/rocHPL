@@ -128,6 +128,7 @@ void HPL_dlaswp01T(const int  M,
   dim3 block_size(TILE_DIM, BLOCK_ROWS);
   dlaswp01T<<<grid_size, block_size, 0, computeStream>>>(
       M, N, A, LDA, U, LDU, LINDXU);
+  CHECK_HIP_ERROR(hipGetLastError());
 
   /*
    * End of HPL_dlaswp01T

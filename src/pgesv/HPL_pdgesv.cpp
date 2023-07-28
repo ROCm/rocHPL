@@ -197,7 +197,7 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
       HPL_pdupdate(panel[0], HPL_LOOK_AHEAD);
 
       // when the look ahead update is finished, copy back the current panel
-      hipStreamWaitEvent(dataStream, update[HPL_LOOK_AHEAD], 0);
+      CHECK_HIP_ERROR(hipStreamWaitEvent(dataStream, update[HPL_LOOK_AHEAD], 0));
       HPL_pdpanel_SendToHost(panel[1]);
 
       /* Queue up finishing the second section */
@@ -206,7 +206,7 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
 
 #ifdef HPL_DETAILED_TIMING
       HPL_ptimer(HPL_TIMING_UPDATE);
-      hipEventSynchronize(update[HPL_LOOK_AHEAD]);
+      CHECK_HIP_ERROR(hipEventSynchronize(update[HPL_LOOK_AHEAD]));
       HPL_ptimer(HPL_TIMING_UPDATE);
 #endif
 
@@ -219,9 +219,9 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
       const int mp   = panel[0]->mp - (curr != 0 ? jb : 0);
 
       // compute the GFLOPs of the look ahead update DGEMM
-      hipEventElapsedTime(&smallDgemmTime,
+      CHECK_HIP_ERROR(hipEventElapsedTime(&smallDgemmTime,
                           dgemmStart[HPL_LOOK_AHEAD],
-                          dgemmStop[HPL_LOOK_AHEAD]);
+                          dgemmStop[HPL_LOOK_AHEAD]));
       smallDgemmGflops =
           (2.0 * mp * jb * jb) / (1000.0 * 1000.0 * smallDgemmTime);
 #endif
@@ -283,7 +283,7 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
 #ifdef HPL_DETAILED_TIMING
     HPL_ptimer(HPL_TIMING_UPDATE);
 #endif
-    hipDeviceSynchronize();
+    CHECK_HIP_ERROR(hipDeviceSynchronize());
 #ifdef HPL_DETAILED_TIMING
     HPL_ptimer(HPL_TIMING_UPDATE);
 #endif
@@ -298,14 +298,14 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
     largeDgemm1Time = 0.0;
     largeDgemm2Time = 0.0;
     if(panel[0]->nu1) {
-      hipEventElapsedTime(
-          &largeDgemm1Time, dgemmStart[HPL_UPD_1], dgemmStop[HPL_UPD_1]);
+      CHECK_HIP_ERROR(hipEventElapsedTime(
+          &largeDgemm1Time, dgemmStart[HPL_UPD_1], dgemmStop[HPL_UPD_1]));
       largeDgemm1Gflops = (2.0 * mp * jb * (panel[0]->nu1)) /
                           (1000.0 * 1000.0 * (largeDgemm1Time));
     }
     if(panel[0]->nu2) {
-      hipEventElapsedTime(
-          &largeDgemm2Time, dgemmStart[HPL_UPD_2], dgemmStop[HPL_UPD_2]);
+      CHECK_HIP_ERROR(hipEventElapsedTime(
+          &largeDgemm2Time, dgemmStart[HPL_UPD_2], dgemmStop[HPL_UPD_2]));
       largeDgemm2Gflops = (2.0 * mp * jb * (panel[0]->nu2)) /
                           (1000.0 * 1000.0 * (largeDgemm2Time));
     }
@@ -393,7 +393,7 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
 #ifdef HPL_DETAILED_TIMING
   HPL_ptimer(HPL_TIMING_UPDATE);
 #endif
-  hipDeviceSynchronize();
+  CHECK_HIP_ERROR(hipDeviceSynchronize());
 #ifdef HPL_DETAILED_TIMING
   HPL_ptimer(HPL_TIMING_UPDATE);
 #endif

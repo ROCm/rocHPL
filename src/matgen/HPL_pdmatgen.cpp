@@ -69,15 +69,16 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   mat->W = nullptr;
 
   /* Create a rocBLAS handle */
-  rocblas_create_handle(&handle);
-  rocblas_set_pointer_mode(handle, rocblas_pointer_mode_host);
+  CHECK_ROCBLAS_ERROR(rocblas_create_handle(&handle));
+  CHECK_ROCBLAS_ERROR(rocblas_set_pointer_mode(handle, rocblas_pointer_mode_host));
+  CHECK_ROCBLAS_ERROR(rocblas_set_stream(handle, computeStream));
+
   rocblas_initialize();
-  rocblas_set_stream(handle, computeStream);
 
 #ifdef HPL_ROCBLAS_ALLOW_ATOMICS
-  rocblas_set_atomics_mode(handle, rocblas_atomics_allowed);
+  CHECK_ROCBLAS_ERROR(rocblas_set_atomics_mode(handle, rocblas_atomics_allowed));
 #else
-  rocblas_set_atomics_mode(handle, rocblas_atomics_not_allowed);
+  CHECK_ROCBLAS_ERROR(rocblas_set_atomics_mode(handle, rocblas_atomics_not_allowed));
 #endif
 
   /*
@@ -148,17 +149,17 @@ int HPL_pdmatgen(HPL_T_test* TEST,
 void HPL_pdmatfree(HPL_T_pmat* mat) {
 
   if(mat->A) {
-    hipFree(mat->A);
+    CHECK_HIP_ERROR(hipFree(mat->A));
     mat->A = nullptr;
   }
   if(mat->X) {
-    hipFree(mat->X);
+    CHECK_HIP_ERROR(hipFree(mat->X));
     mat->X = nullptr;
   }
   if(mat->W) {
-    hipFree(mat->W);
+    CHECK_HIP_ERROR(hipFree(mat->W));
     mat->W = nullptr;
   }
 
-  rocblas_destroy_handle(handle);
+  CHECK_ROCBLAS_ERROR(rocblas_destroy_handle(handle));
 }

@@ -92,28 +92,27 @@ void HPL_pdpanel_SendToDevice(HPL_T_panel* PANEL) {
 
   // copy A and/or L2
   if(PANEL->grid->mycol == PANEL->pcol) {
-
     if(PANEL->grid->npcol > 1) { // L2 is its own array
       if(PANEL->grid->myrow == PANEL->prow) {
         if((PANEL->mp - jb) > 0)
-          hipMemcpy2DAsync(PANEL->L2,
+          CHECK_HIP_ERROR(hipMemcpy2DAsync(PANEL->L2,
                            PANEL->ldl2 * sizeof(double),
                            Mptr(PANEL->A, jb, -jb, PANEL->lda),
                            PANEL->lda * sizeof(double),
                            (PANEL->mp - jb) * sizeof(double),
                            jb,
                            hipMemcpyDeviceToDevice,
-                           dataStream);
+                           dataStream));
       } else {
         if((PANEL->mp) > 0)
-          hipMemcpy2DAsync(PANEL->L2,
+          CHECK_HIP_ERROR(hipMemcpy2DAsync(PANEL->L2,
                            PANEL->ldl2 * sizeof(double),
                            Mptr(PANEL->A, 0, -jb, PANEL->lda),
                            PANEL->lda * sizeof(double),
                            PANEL->mp * sizeof(double),
                            jb,
                            hipMemcpyDeviceToDevice,
-                           dataStream);
+                           dataStream));
       }
     }
   }

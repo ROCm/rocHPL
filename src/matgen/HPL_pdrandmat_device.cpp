@@ -196,6 +196,6 @@ void HPL_pdrandmat(const HPL_T_grid* GRID,
                                     rjumpC,
                                     startrand,
                                     A);
-
-  hipDeviceSynchronize();
+  CHECK_HIP_ERROR(hipGetLastError());
+  CHECK_HIP_ERROR(hipDeviceSynchronize());
 }

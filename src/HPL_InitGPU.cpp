@@ -44,7 +44,7 @@ void HPL_InitGPU(const HPL_T_grid* GRID) {
 
   /* Find out how many GPUs are in the system and their device number */
   int deviceCount;
-  hipGetDeviceCount(&deviceCount);
+  CHECK_HIP_ERROR(hipGetDeviceCount(&deviceCount));
 
   if(deviceCount < 1) {
     if(localRank == 0)
@@ -62,7 +62,7 @@ void HPL_InitGPU(const HPL_T_grid* GRID) {
 #ifdef HPL_VERBOSE_PRINT
   if(rank < localSize) {
     hipDeviceProp_t props;
-    hipGetDeviceProperties(&props, dev);
+    CHECK_HIP_ERROR(hipGetDeviceProperties(&props, dev));
 
     printf("GPU  Binding: Process %d [(p,q)=(%d,%d)] GPU: %d, pciBusID %x \n",
            rank,
@@ -75,45 +75,45 @@ void HPL_InitGPU(const HPL_T_grid* GRID) {
 
   /* Assign device to MPI process, initialize BLAS and probe device properties
    */
-  hipSetDevice(dev);
+  CHECK_HIP_ERROR(hipSetDevice(dev));
 
-  hipStreamCreate(&computeStream);
-  hipStreamCreate(&dataStream);
+  CHECK_HIP_ERROR(hipStreamCreate(&computeStream));
+  CHECK_HIP_ERROR(hipStreamCreate(&dataStream));
 
-  hipEventCreate(swapStartEvent + HPL_LOOK_AHEAD);
-  hipEventCreate(swapStartEvent + HPL_UPD_1);
-  hipEventCreate(swapStartEvent + HPL_UPD_2);
+  CHECK_HIP_ERROR(hipEventCreate(swapStartEvent + HPL_LOOK_AHEAD));
+  CHECK_HIP_ERROR(hipEventCreate(swapStartEvent + HPL_UPD_1));
+  CHECK_HIP_ERROR(hipEventCreate(swapStartEvent + HPL_UPD_2));
 
-  hipEventCreate(update + HPL_LOOK_AHEAD);
-  hipEventCreate(update + HPL_UPD_1);
-  hipEventCreate(update + HPL_UPD_2);
+  CHECK_HIP_ERROR(hipEventCreate(update + HPL_LOOK_AHEAD));
+  CHECK_HIP_ERROR(hipEventCreate(update + HPL_UPD_1));
+  CHECK_HIP_ERROR(hipEventCreate(update + HPL_UPD_2));
 
-  hipEventCreate(dgemmStart + HPL_LOOK_AHEAD);
-  hipEventCreate(dgemmStart + HPL_UPD_1);
-  hipEventCreate(dgemmStart + HPL_UPD_2);
+  CHECK_HIP_ERROR(hipEventCreate(dgemmStart + HPL_LOOK_AHEAD));
+  CHECK_HIP_ERROR(hipEventCreate(dgemmStart + HPL_UPD_1));
+  CHECK_HIP_ERROR(hipEventCreate(dgemmStart + HPL_UPD_2));
 
-  hipEventCreate(dgemmStop + HPL_LOOK_AHEAD);
-  hipEventCreate(dgemmStop + HPL_UPD_1);
-  hipEventCreate(dgemmStop + HPL_UPD_2);
+  CHECK_HIP_ERROR(hipEventCreate(dgemmStop + HPL_LOOK_AHEAD));
+  CHECK_HIP_ERROR(hipEventCreate(dgemmStop + HPL_UPD_1));
+  CHECK_HIP_ERROR(hipEventCreate(dgemmStop + HPL_UPD_2));
 }
 
 void HPL_FreeGPU() {
-  hipEventDestroy(swapStartEvent[HPL_LOOK_AHEAD]);
-  hipEventDestroy(swapStartEvent[HPL_UPD_1]);
-  hipEventDestroy(swapStartEvent[HPL_UPD_2]);
+  CHECK_HIP_ERROR(hipEventDestroy(swapStartEvent[HPL_LOOK_AHEAD]));
+  CHECK_HIP_ERROR(hipEventDestroy(swapStartEvent[HPL_UPD_1]));
+  CHECK_HIP_ERROR(hipEventDestroy(swapStartEvent[HPL_UPD_2]));
 
-  hipEventDestroy(update[HPL_LOOK_AHEAD]);
-  hipEventDestroy(update[HPL_UPD_1]);
-  hipEventDestroy(update[HPL_UPD_2]);
+  CHECK_HIP_ERROR(hipEventDestroy(update[HPL_LOOK_AHEAD]));
+  CHECK_HIP_ERROR(hipEventDestroy(update[HPL_UPD_1]));
+  CHECK_HIP_ERROR(hipEventDestroy(update[HPL_UPD_2]));
 
-  hipEventDestroy(dgemmStart[HPL_LOOK_AHEAD]);
-  hipEventDestroy(dgemmStart[HPL_UPD_1]);
-  hipEventDestroy(dgemmStart[HPL_UPD_2]);
+  CHECK_HIP_ERROR(hipEventDestroy(dgemmStart[HPL_LOOK_AHEAD]));
+  CHECK_HIP_ERROR(hipEventDestroy(dgemmStart[HPL_UPD_1]));
+  CHECK_HIP_ERROR(hipEventDestroy(dgemmStart[HPL_UPD_2]));
 
-  hipEventDestroy(dgemmStop[HPL_LOOK_AHEAD]);
-  hipEventDestroy(dgemmStop[HPL_UPD_1]);
-  hipEventDestroy(dgemmStop[HPL_UPD_2]);
+  CHECK_HIP_ERROR(hipEventDestroy(dgemmStop[HPL_LOOK_AHEAD]));
+  CHECK_HIP_ERROR(hipEventDestroy(dgemmStop[HPL_UPD_1]));
+  CHECK_HIP_ERROR(hipEventDestroy(dgemmStop[HPL_UPD_2]));
 
-  hipStreamDestroy(dataStream);
-  hipStreamDestroy(computeStream);
+  CHECK_HIP_ERROR(hipStreamDestroy(dataStream));
+  CHECK_HIP_ERROR(hipStreamDestroy(computeStream));
 }
