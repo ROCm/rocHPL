@@ -330,7 +330,7 @@ void HPL_pdtest(HPL_T_test* TEST,
   // Bptr  = Mptr( mat.A , 0, nq, mat.ld );
   size_t BptrBytes = Mmax(mat.nq, mat.ld) * sizeof(double);
 
-  nq    = HPL_numroc(N, NB, NB, mycol, 0, npcol);
+  nq   = HPL_numroc(N, NB, NB, mycol, 0, npcol);
   Bptr = Mptr(mat.A, 0, nq, mat.ld);
   if(mycol == HPL_indxg2p(N, NB, NB, 0, npcol)) {
     if(mat.mp > 0) {
@@ -369,20 +369,21 @@ void HPL_pdtest(HPL_T_test* TEST,
     for(int nn = 0; nn < nq; nn += nq_chunk) {
       int nb = Mmin(nq - nn, nq_chunk);
       CHECK_ROCBLAS_ERROR(rocblas_dgemv(handle,
-                    rocblas_operation_none,
-                    mat.mp,
-                    nb,
-                    &mone,
-                    Mptr(mat.A, 0, nn, mat.ld),
-                    mat.ld,
-                    Mptr(mat.X, 0, nn, 1),
-                    1,
-                    &one,
-                    Bptr,
-                    1));
+                                        rocblas_operation_none,
+                                        mat.mp,
+                                        nb,
+                                        &mone,
+                                        Mptr(mat.A, 0, nn, mat.ld),
+                                        mat.ld,
+                                        Mptr(mat.X, 0, nn, 1),
+                                        1,
+                                        &one,
+                                        Bptr,
+                                        1));
     }
 
-    CHECK_HIP_ERROR(hipMemcpy(Bptr, Bptr, mat.mp * sizeof(double), hipMemcpyDeviceToHost));
+    CHECK_HIP_ERROR(
+        hipMemcpy(Bptr, Bptr, mat.mp * sizeof(double), hipMemcpyDeviceToHost));
   } else if(nq > 0) {
     const double one  = 1.0;
     const double zero = 0.0;
@@ -390,35 +391,36 @@ void HPL_pdtest(HPL_T_test* TEST,
 
     int nb = Mmin(nq, nq_chunk);
     CHECK_ROCBLAS_ERROR(rocblas_dgemv(handle,
-                  rocblas_operation_none,
-                  mat.mp,
-                  nb,
-                  &mone,
-                  Mptr(mat.A, 0, 0, mat.ld),
-                  mat.ld,
-                  Mptr(mat.X, 0, 0, 1),
-                  1,
-                  &zero,
-                  Bptr,
-                  1));
+                                      rocblas_operation_none,
+                                      mat.mp,
+                                      nb,
+                                      &mone,
+                                      Mptr(mat.A, 0, 0, mat.ld),
+                                      mat.ld,
+                                      Mptr(mat.X, 0, 0, 1),
+                                      1,
+                                      &zero,
+                                      Bptr,
+                                      1));
 
     for(int nn = nb; nn < nq; nn += nq_chunk) {
       int nb = Mmin(nq - nn, nq_chunk);
       CHECK_ROCBLAS_ERROR(rocblas_dgemv(handle,
-                    rocblas_operation_none,
-                    mat.mp,
-                    nb,
-                    &mone,
-                    Mptr(mat.A, 0, nn, mat.ld),
-                    mat.ld,
-                    Mptr(mat.X, 0, nn, 1),
-                    1,
-                    &one,
-                    Bptr,
-                    1));
+                                        rocblas_operation_none,
+                                        mat.mp,
+                                        nb,
+                                        &mone,
+                                        Mptr(mat.A, 0, nn, mat.ld),
+                                        mat.ld,
+                                        Mptr(mat.X, 0, nn, 1),
+                                        1,
+                                        &one,
+                                        Bptr,
+                                        1));
     }
 
-    CHECK_HIP_ERROR(hipMemcpy(Bptr, Bptr, mat.mp * sizeof(double), hipMemcpyDeviceToHost));
+    CHECK_HIP_ERROR(
+        hipMemcpy(Bptr, Bptr, mat.mp * sizeof(double), hipMemcpyDeviceToHost));
 
   } else {
     for(ii = 0; ii < mat.mp; ii++) Bptr[ii] = HPL_rzero;
@@ -432,7 +434,8 @@ void HPL_pdtest(HPL_T_test* TEST,
   /*
    * Compute || b - A x ||_oo
    */
-  CHECK_HIP_ERROR(hipMemcpy(Bptr, Bptr, mat.mp * sizeof(double), hipMemcpyHostToDevice));
+  CHECK_HIP_ERROR(
+      hipMemcpy(Bptr, Bptr, mat.mp * sizeof(double), hipMemcpyHostToDevice));
   resid0 = HPL_pdlange(GRID, HPL_NORM_I, N, 1, NB, Bptr, mat.ld);
 
   /*

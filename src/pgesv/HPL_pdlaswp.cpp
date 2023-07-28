@@ -40,7 +40,7 @@ void HPL_pdlaswp_start(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   double *A, *U, *W;
   int *   ipID, *iplen, *ipcounts, *ipoffsets, *iwork,
       *lindxU = NULL, *lindxA = NULL, *lindxAU, *permU, *permU_ex;
-  int  icurrow, *iflag, *ipA, *ipl, jb, k, lda, myrow, n, nprow, LDU, LDW;
+  int icurrow, *iflag, *ipA, *ipl, jb, k, lda, myrow, n, nprow, LDU, LDW;
 
   /* ..
    * .. Executable Statements ..
@@ -60,7 +60,7 @@ void HPL_pdlaswp_start(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   // quick return if we're 1xQ
   if(nprow == 1) return;
 
-  A      = PANEL->A;
+  A       = PANEL->A;
   lda     = PANEL->lda;
   icurrow = PANEL->prow;
 
@@ -114,10 +114,10 @@ void HPL_pdlaswp_start(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   ipoffsets = ipcounts + nprow;
   iwork     = ipoffsets + nprow;
 
-  lindxU  = PANEL->lindxU;
-  lindxA  = PANEL->lindxA;
-  lindxAU = PANEL->lindxAU;
-  permU   = PANEL->permU;
+  lindxU   = PANEL->lindxU;
+  lindxA   = PANEL->lindxA;
+  lindxAU  = PANEL->lindxAU;
+  permU    = PANEL->permU;
   permU_ex = permU + jb;
 
   if(*iflag == -1) /* no index arrays have been computed so far */
@@ -195,8 +195,8 @@ void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    */
   double *A, *U, *W;
   int *   ipID, *iplen, *ipcounts, *ipoffsets, *iwork;
-  int *lindxU = NULL, *lindxA = NULL, *lindxAU, *permU, *permU_ex;
-  int  icurrow, *iflag, *ipA, *ipl, jb, k, lda, myrow, n, nprow, LDU, LDW;
+  int *   lindxU = NULL, *lindxA = NULL, *lindxAU, *permU, *permU_ex;
+  int     icurrow, *iflag, *ipA, *ipl, jb, k, lda, myrow, n, nprow, LDU, LDW;
 
   /* ..
    * .. Executable Statements ..
@@ -216,7 +216,7 @@ void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   // quick return if we're 1xQ
   if(nprow == 1) return;
 
-  A      = PANEL->A;
+  A       = PANEL->A;
   lda     = PANEL->lda;
   icurrow = PANEL->prow;
 
@@ -270,10 +270,10 @@ void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   ipoffsets = ipcounts + nprow;
   iwork     = ipoffsets + nprow;
 
-  lindxA  = PANEL->lindxA;
-  lindxAU = PANEL->lindxAU;
-  lindxU  = PANEL->lindxU;
-  permU   = PANEL->permU;
+  lindxA   = PANEL->lindxA;
+  lindxAU  = PANEL->lindxAU;
+  lindxU   = PANEL->lindxU;
+  permU    = PANEL->permU;
   permU_ex = permU + jb;
 
   /* Set MPI message counts and offsets */
@@ -373,8 +373,8 @@ void HPL_pdlaswp_end(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    */
   double *A, *U, *W;
   int *   ipID, *iplen, *ipcounts, *ipoffsets, *iwork;
-  int *lindxA = NULL, *lindxAU, *lindxU, *permU, *permU_ex;
-  int  icurrow, *iflag, *ipA, *ipl, jb, k, lda, myrow, n, nprow, LDU, LDW;
+  int *   lindxA = NULL, *lindxAU, *lindxU, *permU, *permU_ex;
+  int     icurrow, *iflag, *ipA, *ipl, jb, k, lda, myrow, n, nprow, LDU, LDW;
 
   /* ..
    * .. Executable Statements ..
@@ -391,7 +391,7 @@ void HPL_pdlaswp_end(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
 
   MPI_Comm comm = PANEL->grid->col_comm;
 
-  A      = PANEL->A;
+  A       = PANEL->A;
   lda     = PANEL->lda;
   icurrow = PANEL->prow;
 
@@ -471,8 +471,7 @@ void HPL_pdlaswp_end(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
     HPL_dlaswp02T(*ipA, n, A, lda, lindxAU, lindxA);
   } else {
     // Queue inserting recieved rows in W into A on device
-    HPL_dlaswp04T(
-        iplen[myrow + 1] - iplen[myrow], n, A, lda, W, LDW, lindxU);
+    HPL_dlaswp04T(iplen[myrow + 1] - iplen[myrow], n, A, lda, W, LDW, lindxU);
   }
 
   /*

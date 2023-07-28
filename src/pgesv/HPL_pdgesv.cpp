@@ -197,7 +197,8 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
       HPL_pdupdate(panel[0], HPL_LOOK_AHEAD);
 
       // when the look ahead update is finished, copy back the current panel
-      CHECK_HIP_ERROR(hipStreamWaitEvent(dataStream, update[HPL_LOOK_AHEAD], 0));
+      CHECK_HIP_ERROR(
+          hipStreamWaitEvent(dataStream, update[HPL_LOOK_AHEAD], 0));
       HPL_pdpanel_SendToHost(panel[1]);
 
       /* Queue up finishing the second section */
@@ -220,8 +221,8 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
 
       // compute the GFLOPs of the look ahead update DGEMM
       CHECK_HIP_ERROR(hipEventElapsedTime(&smallDgemmTime,
-                          dgemmStart[HPL_LOOK_AHEAD],
-                          dgemmStop[HPL_LOOK_AHEAD]));
+                                          dgemmStart[HPL_LOOK_AHEAD],
+                                          dgemmStop[HPL_LOOK_AHEAD]));
       smallDgemmGflops =
           (2.0 * mp * jb * jb) / (1000.0 * 1000.0 * smallDgemmTime);
 #endif

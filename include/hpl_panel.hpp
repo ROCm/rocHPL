@@ -29,27 +29,27 @@
  * ---------------------------------------------------------------------
  */
 typedef struct HPL_S_panel {
-  struct HPL_S_grid* grid;   /* ptr to the process grid */
-  struct HPL_S_palg* algo;   /* ptr to the algo parameters */
-  struct HPL_S_pmat* pmat;   /* ptr to the local array info */
-  double*            A;      /* ptr to trailing part of A */
-  double*            LWORK;  /* L work space */
-  double*            UWORK;  /* U work space */
-  double*            fWORK;  /* pdfact work space */
-  double*            L2;     /* ptr to L */
-  double*            L1;     /* ptr to jb x jb upper block of A */
-  double*            DINFO;  /* ptr to replicated scalar info */
+  struct HPL_S_grid* grid;  /* ptr to the process grid */
+  struct HPL_S_palg* algo;  /* ptr to the algo parameters */
+  struct HPL_S_pmat* pmat;  /* ptr to the local array info */
+  double*            A;     /* ptr to trailing part of A */
+  double*            LWORK; /* L work space */
+  double*            UWORK; /* U work space */
+  double*            fWORK; /* pdfact work space */
+  double*            L2;    /* ptr to L */
+  double*            L1;    /* ptr to jb x jb upper block of A */
+  double*            DINFO; /* ptr to replicated scalar info */
   int*               ipiv;
   int*               lindxA;
   int*               lindxAU;
   int*               lindxU;
   int*               permU;
-  double*            U;   /* ptr to U */
-  double*            W;   /* ptr to W */
-  double*            U1;  /* ptr to U1 */
-  double*            W1;  /* ptr to W1 */
-  double*            U2;  /* ptr to U2 */
-  double*            W2;  /* ptr to W2 */
+  double*            U;  /* ptr to U */
+  double*            W;  /* ptr to W */
+  double*            U1; /* ptr to U1 */
+  double*            W1; /* ptr to W1 */
+  double*            U2; /* ptr to U2 */
+  double*            W2; /* ptr to W2 */
   int                nu0;
   int                nu1;
   int                nu2;

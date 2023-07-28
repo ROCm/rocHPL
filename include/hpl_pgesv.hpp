@@ -78,8 +78,8 @@ typedef struct HPL_S_palg {
 } HPL_T_palg;
 
 typedef struct HPL_S_pmat {
-  double* A;   /* pointer to local piece of A */
-  double* X;   /* pointer to solution vector */
+  double* A;    /* pointer to local piece of A */
+  double* X;    /* pointer to solution vector */
   int     n;    /* global problem size */
   int     nb;   /* blocking factor */
   int     ld;   /* local leading dimension */

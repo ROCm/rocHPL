@@ -31,7 +31,7 @@ void HPL_unroll_ipiv(const int mp,
 }
 
 void HPL_pdpanel_SendToDevice(HPL_T_panel* PANEL) {
-  int     jb, i, ml2;
+  int jb, i, ml2;
 
   jb = PANEL->jb;
 
@@ -50,7 +50,7 @@ void HPL_pdpanel_SendToDevice(HPL_T_panel* PANEL) {
       for(i = 0; i < jb; i++) { ipiv[i] -= PANEL->ii; } // shift
       HPL_unroll_ipiv(PANEL->mp, jb, ipiv, ipiv_ex, upiv);
 
-      for(i = 0; i < jb; i++) { ipiv[i] = upiv[i];}
+      for(i = 0; i < jb; i++) { ipiv[i] = upiv[i]; }
 
     } else {
 
@@ -96,23 +96,23 @@ void HPL_pdpanel_SendToDevice(HPL_T_panel* PANEL) {
       if(PANEL->grid->myrow == PANEL->prow) {
         if((PANEL->mp - jb) > 0)
           CHECK_HIP_ERROR(hipMemcpy2DAsync(PANEL->L2,
-                           PANEL->ldl2 * sizeof(double),
-                           Mptr(PANEL->A, jb, -jb, PANEL->lda),
-                           PANEL->lda * sizeof(double),
-                           (PANEL->mp - jb) * sizeof(double),
-                           jb,
-                           hipMemcpyDeviceToDevice,
-                           dataStream));
+                                           PANEL->ldl2 * sizeof(double),
+                                           Mptr(PANEL->A, jb, -jb, PANEL->lda),
+                                           PANEL->lda * sizeof(double),
+                                           (PANEL->mp - jb) * sizeof(double),
+                                           jb,
+                                           hipMemcpyDeviceToDevice,
+                                           dataStream));
       } else {
         if((PANEL->mp) > 0)
           CHECK_HIP_ERROR(hipMemcpy2DAsync(PANEL->L2,
-                           PANEL->ldl2 * sizeof(double),
-                           Mptr(PANEL->A, 0, -jb, PANEL->lda),
-                           PANEL->lda * sizeof(double),
-                           PANEL->mp * sizeof(double),
-                           jb,
-                           hipMemcpyDeviceToDevice,
-                           dataStream));
+                                           PANEL->ldl2 * sizeof(double),
+                                           Mptr(PANEL->A, 0, -jb, PANEL->lda),
+                                           PANEL->lda * sizeof(double),
+                                           PANEL->mp * sizeof(double),
+                                           jb,
+                                           hipMemcpyDeviceToDevice,
+                                           dataStream));
       }
     }
   }
