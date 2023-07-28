@@ -32,24 +32,23 @@ extern hipStream_t    computeStream;
 extern hipStream_t    dataStream;
 
 #define CHECK_HIP_ERROR(val) hipCheck((val), #val, __FILE__, __LINE__)
-inline void hipCheck(hipError_t err,
+inline void hipCheck(hipError_t        err,
                      const char* const func,
                      const char* const file,
-                     const int line) {
-  if (err != hipSuccess) {
-    std::cerr << "HIP Runtime Error at: " << file << ":" << line
-              << std::endl;
+                     const int         line) {
+  if(err != hipSuccess) {
+    std::cerr << "HIP Runtime Error at: " << file << ":" << line << std::endl;
     std::cerr << hipGetErrorString(err) << " " << func << std::endl;
     std::exit(-1);
   }
 }
 
 #define CHECK_ROCBLAS_ERROR(val) rocBLASCheck((val), #val, __FILE__, __LINE__)
-inline void rocBLASCheck(rocblas_status err,
+inline void rocBLASCheck(rocblas_status    err,
                          const char* const func,
                          const char* const file,
-                         const int line) {
-  if (err != rocblas_status_success) {
+                         const int         line) {
+  if(err != rocblas_status_success) {
     std::cerr << "rocBLAS Reports Error at: " << file << ":" << line
               << std::endl;
     std::cerr << rocblas_status_to_string(err) << " " << func << std::endl;

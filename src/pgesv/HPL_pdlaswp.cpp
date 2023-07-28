@@ -138,13 +138,13 @@ void HPL_pdlaswp_start(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
     // get the ipivs on the host after the Bcast
     if(PANEL->grid->mycol != PANEL->pcol) {
       CHECK_HIP_ERROR(hipMemcpy2DAsync(PANEL->ipiv,
-                       PANEL->jb * sizeof(int),
-                       PANEL->dipiv,
-                       PANEL->jb * sizeof(int),
-                       PANEL->jb * sizeof(int),
-                       1,
-                       hipMemcpyDeviceToHost,
-                       dataStream));
+                                       PANEL->jb * sizeof(int),
+                                       PANEL->dipiv,
+                                       PANEL->jb * sizeof(int),
+                                       PANEL->jb * sizeof(int),
+                                       1,
+                                       hipMemcpyDeviceToHost,
+                                       dataStream));
     }
     CHECK_HIP_ERROR(hipStreamSynchronize(dataStream));
 

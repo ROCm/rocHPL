@@ -39,8 +39,8 @@ int HPL_pdpanel_free(HPL_T_panel* PANEL) {
 
     if(PANEL->dLWORK) CHECK_HIP_ERROR(hipFree(PANEL->dLWORK));
     if(PANEL->dUWORK) CHECK_HIP_ERROR(hipFree(PANEL->dUWORK));
-    if(PANEL->LWORK)  CHECK_HIP_ERROR(hipHostFree(PANEL->LWORK));
-    if(PANEL->UWORK)  CHECK_HIP_ERROR(hipHostFree(PANEL->UWORK));
+    if(PANEL->LWORK) CHECK_HIP_ERROR(hipHostFree(PANEL->LWORK));
+    if(PANEL->UWORK) CHECK_HIP_ERROR(hipHostFree(PANEL->UWORK));
 
     PANEL->max_lwork_size = 0;
     PANEL->max_uwork_size = 0;

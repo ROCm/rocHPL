@@ -194,14 +194,15 @@ double HPL_pdlange(const HPL_T_grid* GRID,
       if(nq == 1) { // column vector
         int id;
         CHECK_ROCBLAS_ERROR(rocblas_idamax(handle, mp, A, 1, &id));
-        CHECK_HIP_ERROR(hipMemcpy(&v0, A + id - 1, 1 * sizeof(double), hipMemcpyDeviceToHost));
+        CHECK_HIP_ERROR(hipMemcpy(
+            &v0, A + id - 1, 1 * sizeof(double), hipMemcpyDeviceToHost));
       } else if(mp == 1) { // row vector
         int id;
         CHECK_ROCBLAS_ERROR(rocblas_idamax(handle, nq, A, LDA, &id));
         CHECK_HIP_ERROR(hipMemcpy(&v0,
-                  A + ((size_t)id * LDA),
-                  1 * sizeof(double),
-                  hipMemcpyDeviceToHost));
+                                  A + ((size_t)id * LDA),
+                                  1 * sizeof(double),
+                                  hipMemcpyDeviceToHost));
       } else {
         // custom reduction kernels
         CHECK_HIP_ERROR(hipMalloc(&dwork, GRID_SIZE * sizeof(double)));
@@ -214,7 +215,8 @@ double HPL_pdlange(const HPL_T_grid* GRID,
         normA_2<<<1, BLOCK_SIZE>>>(grid_size, dwork);
         CHECK_HIP_ERROR(hipGetLastError());
 
-        CHECK_HIP_ERROR(hipMemcpy(&v0, dwork, 1 * sizeof(double), hipMemcpyDeviceToHost));
+        CHECK_HIP_ERROR(
+            hipMemcpy(&v0, dwork, 1 * sizeof(double), hipMemcpyDeviceToHost));
         CHECK_HIP_ERROR(hipFree(dwork));
       }
     }
@@ -235,7 +237,8 @@ double HPL_pdlange(const HPL_T_grid* GRID,
         CHECK_HIP_ERROR(hipMalloc(&dwork, nq * sizeof(double)));
         norm1<<<nq, BLOCK_SIZE>>>(nq, mp, A, LDA, dwork);
         CHECK_HIP_ERROR(hipGetLastError());
-        CHECK_HIP_ERROR(hipMemcpy(work, dwork, nq * sizeof(double), hipMemcpyDeviceToHost));
+        CHECK_HIP_ERROR(
+            hipMemcpy(work, dwork, nq * sizeof(double), hipMemcpyDeviceToHost));
       }
       /*
        * Find sum of global matrix columns, store on row 0 of process grid
@@ -274,7 +277,8 @@ double HPL_pdlange(const HPL_T_grid* GRID,
         size_t grid_size = (mp + BLOCK_SIZE - 1) / BLOCK_SIZE;
         norminf<<<grid_size, BLOCK_SIZE>>>(nq, mp, A, LDA, dwork);
         CHECK_HIP_ERROR(hipGetLastError());
-        CHECK_HIP_ERROR(hipMemcpy(work, dwork, mp * sizeof(double), hipMemcpyDeviceToHost));
+        CHECK_HIP_ERROR(
+            hipMemcpy(work, dwork, mp * sizeof(double), hipMemcpyDeviceToHost));
       }
 
       /*

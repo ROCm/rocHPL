@@ -118,15 +118,18 @@ int HPL_pdmatgen(HPL_T_test* TEST,
 
   /* Create a rocBLAS handle */
   CHECK_ROCBLAS_ERROR(rocblas_create_handle(&handle));
-  CHECK_ROCBLAS_ERROR(rocblas_set_pointer_mode(handle, rocblas_pointer_mode_host));
+  CHECK_ROCBLAS_ERROR(
+      rocblas_set_pointer_mode(handle, rocblas_pointer_mode_host));
   CHECK_ROCBLAS_ERROR(rocblas_set_stream(handle, computeStream));
 
   rocblas_initialize();
 
 #ifdef HPL_ROCBLAS_ALLOW_ATOMICS
-  CHECK_ROCBLAS_ERROR(rocblas_set_atomics_mode(handle, rocblas_atomics_allowed));
+  CHECK_ROCBLAS_ERROR(
+      rocblas_set_atomics_mode(handle, rocblas_atomics_allowed));
 #else
-  CHECK_ROCBLAS_ERROR(rocblas_set_atomics_mode(handle, rocblas_atomics_not_allowed));
+  CHECK_ROCBLAS_ERROR(
+      rocblas_set_atomics_mode(handle, rocblas_atomics_not_allowed));
 #endif
 
   /*

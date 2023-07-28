@@ -129,7 +129,8 @@ void HPL_pdtrsv(HPL_T_grid* GRID, HPL_T_pmat* AMAT) {
   if(Anp > 0) {
     if(Alcol != Bcol) {
       if(mycol == Bcol) {
-        CHECK_HIP_ERROR(hipMemcpyAsync(dXC, dB, Anp * sizeof(double), hipMemcpyDeviceToDevice, stream));
+        CHECK_HIP_ERROR(hipMemcpyAsync(
+            dXC, dB, Anp * sizeof(double), hipMemcpyDeviceToDevice, stream));
         CHECK_HIP_ERROR(hipStreamSynchronize(stream));
         (void)HPL_send(dXC, Anp, Alcol, Rmsgid, Rcomm);
       } else if(mycol == Alcol) {
@@ -137,7 +138,8 @@ void HPL_pdtrsv(HPL_T_grid* GRID, HPL_T_pmat* AMAT) {
       }
     } else {
       if(mycol == Bcol) {
-        CHECK_HIP_ERROR(hipMemcpyAsync(dXC, dB, Anp * sizeof(double), hipMemcpyDeviceToDevice, stream));
+        CHECK_HIP_ERROR(hipMemcpyAsync(
+            dXC, dB, Anp * sizeof(double), hipMemcpyDeviceToDevice, stream));
       }
     }
   }
@@ -172,14 +174,14 @@ void HPL_pdtrsv(HPL_T_grid* GRID, HPL_T_pmat* AMAT) {
     dXdprev = (dXd = dXR + Anq);
     if(myrow == Alrow) {
       CHECK_ROCBLAS_ERROR(rocblas_dtrsv(handle,
-                    rocblas_fill_upper,
-                    rocblas_operation_none,
-                    rocblas_diagonal_non_unit,
-                    kb,
-                    dAptr + Anp,
-                    lda,
-                    dXC + Anp,
-                    1));
+                                        rocblas_fill_upper,
+                                        rocblas_operation_none,
+                                        rocblas_diagonal_non_unit,
+                                        kb,
+                                        dAptr + Anp,
+                                        lda,
+                                        dXC + Anp,
+                                        1));
       CHECK_ROCBLAS_ERROR(rocblas_dcopy(handle, kb, dXC + Anp, 1, dXd, 1));
     }
   }
@@ -236,17 +238,17 @@ void HPL_pdtrsv(HPL_T_grid* GRID, HPL_T_pmat* AMAT) {
         const double one  = 1.0;
         const double mone = -1.0;
         CHECK_ROCBLAS_ERROR(rocblas_dgemv(handle,
-                      rocblas_operation_none,
-                      n1pprev,
-                      kbprev,
-                      &mone,
-                      dAprev + tmp1,
-                      lda,
-                      dXdprev,
-                      1,
-                      &one,
-                      dXC + tmp1,
-                      1));
+                                          rocblas_operation_none,
+                                          n1pprev,
+                                          kbprev,
+                                          &mone,
+                                          dAprev + tmp1,
+                                          lda,
+                                          dXdprev,
+                                          1,
+                                          &one,
+                                          dXC + tmp1,
+                                          1));
         if(GridIsNotPx1) {
           if(n1pprev) {
             CHECK_HIP_ERROR(hipDeviceSynchronize());
@@ -284,15 +286,16 @@ void HPL_pdtrsv(HPL_T_grid* GRID, HPL_T_pmat* AMAT) {
      */
     if((mycol == Alcol) && (myrow == Alrow)) {
       CHECK_ROCBLAS_ERROR(rocblas_dtrsv(handle,
-                    rocblas_fill_upper,
-                    rocblas_operation_none,
-                    rocblas_diagonal_non_unit,
-                    kb,
-                    dAptr + Anp,
-                    lda,
-                    dXC + Anp,
-                    1));
-      CHECK_ROCBLAS_ERROR(rocblas_dcopy(handle, kb, dXC + Anp, 1, dXR + Anq, 1));
+                                        rocblas_fill_upper,
+                                        rocblas_operation_none,
+                                        rocblas_diagonal_non_unit,
+                                        kb,
+                                        dAptr + Anp,
+                                        lda,
+                                        dXC + Anp,
+                                        1));
+      CHECK_ROCBLAS_ERROR(
+          rocblas_dcopy(handle, kb, dXC + Anp, 1, dXR + Anq, 1));
     }
     /*
      *  Finish previous update
@@ -301,17 +304,17 @@ void HPL_pdtrsv(HPL_T_grid* GRID, HPL_T_pmat* AMAT) {
       const double one  = 1.0;
       const double mone = -1.0;
       CHECK_ROCBLAS_ERROR(rocblas_dgemv(handle,
-                    rocblas_operation_none,
-                    tmp1,
-                    kbprev,
-                    &mone,
-                    dAprev,
-                    lda,
-                    dXdprev,
-                    1,
-                    &one,
-                    dXC,
-                    1));
+                                        rocblas_operation_none,
+                                        tmp1,
+                                        kbprev,
+                                        &mone,
+                                        dAprev,
+                                        lda,
+                                        dXdprev,
+                                        1,
+                                        &one,
+                                        dXC,
+                                        1));
     }
     /*
      *  Save info of current step and update info for the next step
