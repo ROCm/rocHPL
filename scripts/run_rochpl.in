@@ -267,127 +267,194 @@ myq=$((rank/p))
 #Although ranks are column-major order, we select GPUs in row-major order on node
 mygpu=$((myq+myp*q))
 
-# Try to detect special Bard-peak core mapping
-if [[ -n ${HPL_PLATFORM+x} ]]; then
-  platform=$HPL_PLATFORM
-else
-  platform=$(cat /sys/class/dmi/id/product_name)
+
+# # Try to detect special Bard-peak core mapping
+# if [[ -n ${HPL_PLATFORM+x} ]]; then
+#   platform=$HPL_PLATFORM
+# else
+#   platform=$(cat /sys/class/dmi/id/product_name)
+# fi
+
+# if [[ "$platform" == "BardPeak" || "$platform" == "HPE_CRAY_EX235A" ]]; then
+#   # Special core mapping for BardPeak
+
+#   # Debug
+#   # if [[ $globalRank == 0 ]]; then
+#   #   echo "BardPeak platform detected"
+#   # fi
+
+#   # Sanity check
+#   if [[ $size -gt 8 ]]; then
+#     echo "Unsupported number of ranks on BardPeak platform; aborting";
+#     exit 1
+#   fi
+
+#   # GCD0 cores="48-55"
+#   # GCD1 cores="56-63"
+#   # GCD2 cores="16-23"
+#   # GCD3 cores="24-31"
+#   # GCD4 cores="0-7"
+#   # GCD5 cores="8-15"
+#   # GCD6 cores="32-39"
+#   # GCD7 cores="40-47"
+
+#   root_cores=(48 56 16 24 0 8 32 40)
+#   root_core=${root_cores[mygpu]}
+
+#   # First omp place is the root core
+#   omp_places="{$root_core}"
+
+#   # First assign the CCD
+#   for i in $(seq $((root_core+1)) $((root_core+8-1)))
+#   do
+#     omp_places+=",{$i}"
+#   done
+#   omp_num_threads=8
+
+#   places="{$root_core-$((root_core+7))}"
+
+#   # Loop through unassigned CCDs
+#   for c in $(seq $((mygpu+size)) $size 7)
+#   do
+#     iroot_core=${root_cores[c]}
+#     for i in $(seq $((iroot_core)) $((iroot_core+8-1)))
+#     do
+#       omp_places+=",{$i}"
+#     done
+#     omp_num_threads=$((omp_num_threads+8))
+#     places+=",{$iroot_core-$((iroot_core+7))}"
+#   done
+
+#   if [[ "${oversubscribe}" == true ]]; then
+#     # Add cores from different columns, without their root cores
+#     for j in $(seq 0  $((q-1)))
+#     do
+#       if [[ "$j" == "$myq" ]]; then
+#         continue
+#       fi
+#       for jj in $(seq 0 $size 7)
+#       do
+#         q_gpu=$((jj+j+myp*q))
+#         q_core=$((root_cores[q_gpu]))
+#         offset=$(( (q_gpu>=size) ? 0 : 1))
+#         for i in $(seq $((q_core+offset)) $((q_core+8-1)))
+#         do
+#           omp_places+=",{$i}"
+#         done
+#         omp_num_threads=$((omp_num_threads+8-offset))
+#         places+=",{$((q_core+offset))-$((q_core+7))}"
+#       done
+#     done
+#   fi
+
+# else
+#   # Default core mapping
+#   root_core=$((myp*row_stride + myq*col_stride))
+
+#   omp_num_threads=${col_stride}
+#   # First omp place is the root core
+#   omp_places="{$root_core}"
+
+#   # Make contiuguous chunk of cores (to maximize L1/L2 locality)
+#   for i in $(seq $((root_core+1)) $((root_core+col_stride-1)))
+#   do
+#     omp_places+=",{$i}"
+#   done
+
+#   if [[ $col_stride -gt 1 ]]; then
+#     places="{$root_core-$((root_core+col_stride-1))}"
+#   else
+#     places="{$root_core}"
+#   fi
+
+#   if [[ "${oversubscribe}" == true ]]; then
+#     # Add cores from different columns, without their root cores
+#     for j in $(seq 0 $((q-1)))
+#     do
+#       if [[ "$j" == "$myq" ]]; then
+#         continue
+#       fi
+#       q_core=$((myp*row_stride + j*col_stride))
+#       for i in $(seq $((q_core+1)) $((q_core+col_stride-1)))
+#       do
+#         omp_places+=",{$i}"
+#       done
+#       omp_num_threads=$((omp_num_threads+col_stride-1))
+
+#       if [[ $col_stride -gt 2 ]]; then
+#         places+=",{$((q_core+1))-$((q_core+col_stride-1))}"
+#       elif [[ $col_stride -gt 1 ]]; then
+#         places+=",{$((q_core+1))}"
+#       fi
+
+#     done
+#   fi
+# fi
+
+# Special core mapping for BardPeak
+
+if [[ $globalRank == 0 ]]; then
+  echo "Using ParryPeak GPU bindings"
 fi
 
-if [[ "$platform" == "BardPeak" || "$platform" == "HPE_CRAY_EX235A" ]]; then
-  # Special core mapping for BardPeak
+# Sanity check
+if [[ $size -gt 4 ]]; then
+  echo "Unsupported number of ranks on ParryPeak platform; aborting";
+  exit 1
+fi
 
-  # Debug
-  # if [[ $globalRank == 0 ]]; then
-  #   echo "BardPeak platform detected"
-  # fi
+# GPU0 cores="48-71"
+# GPU1 cores="72-95"
+# GPU2 cores="0-23"
+# GPU3 cores="24-47"
 
-  # Sanity check
-  if [[ $size -gt 8 ]]; then
-    echo "Unsupported number of ranks on BardPeak platform; aborting";
-    exit 1
-  fi
+root_cores=(48 72 0 24)
+root_core=${root_cores[mygpu]}
 
-  # GCD0 cores="48-55"
-  # GCD1 cores="56-63"
-  # GCD2 cores="16-23"
-  # GCD3 cores="24-31"
-  # GCD4 cores="0-7"
-  # GCD5 cores="8-15"
-  # GCD6 cores="32-39"
-  # GCD7 cores="40-47"
+# First omp place is the root core
+omp_places="{$root_core}"
 
-  root_cores=(48 56 16 24 0 8 32 40)
-  root_core=${root_cores[mygpu]}
+# First assign the socket
+for i in $(seq $((root_core+1)) $((root_core+24-1)))
+do
+  omp_places+=",{$i}"
+done
+omp_num_threads=24
 
-  # First omp place is the root core
-  omp_places="{$root_core}"
+places="{$root_core-$((root_core+23))}"
 
-  # First assign the CCD
-  for i in $(seq $((root_core+1)) $((root_core+8-1)))
+# Loop through unassigned sockets
+for c in $(seq $((mygpu+size)) $size 3)
+do
+  iroot_core=${root_cores[c]}
+  for i in $(seq $((iroot_core)) $((iroot_core+24-1)))
   do
     omp_places+=",{$i}"
   done
-  omp_num_threads=8
+  omp_num_threads=$((omp_num_threads+24))
+  places+=",{$iroot_core-$((iroot_core+23))}"
+done
 
-  places="{$root_core-$((root_core+7))}"
-
-  # Loop through unassigned CCDs
-  for c in $(seq $((mygpu+size)) $size 7)
+if [[ "${oversubscribe}" == true ]]; then
+  # Add cores from different columns, without their root cores
+  for j in $(seq 0  $((q-1)))
   do
-    iroot_core=${root_cores[c]}
-    for i in $(seq $((iroot_core)) $((iroot_core+8-1)))
+    if [[ "$j" == "$myq" ]]; then
+      continue
+    fi
+    for jj in $(seq 0 $size 3)
     do
-      omp_places+=",{$i}"
-    done
-    omp_num_threads=$((omp_num_threads+8))
-    places+=",{$iroot_core-$((iroot_core+7))}"
-  done
-
-  if [[ "${oversubscribe}" == true ]]; then
-    # Add cores from different columns, without their root cores
-    for j in $(seq 0  $((q-1)))
-    do
-      if [[ "$j" == "$myq" ]]; then
-        continue
-      fi
-      for jj in $(seq 0 $size 7)
-      do
-        q_gpu=$((jj+j+myp*q))
-        q_core=$((root_cores[q_gpu]))
-        offset=$(( (q_gpu>=size) ? 0 : 1))
-        for i in $(seq $((q_core+offset)) $((q_core+8-1)))
-        do
-          omp_places+=",{$i}"
-        done
-        omp_num_threads=$((omp_num_threads+8-offset))
-        places+=",{$((q_core+offset))-$((q_core+7))}"
-      done
-    done
-  fi
-
-else
-  # Default core mapping
-  root_core=$((myp*row_stride + myq*col_stride))
-
-  omp_num_threads=${col_stride}
-  # First omp place is the root core
-  omp_places="{$root_core}"
-
-  # Make contiuguous chunk of cores (to maximize L1/L2 locality)
-  for i in $(seq $((root_core+1)) $((root_core+col_stride-1)))
-  do
-    omp_places+=",{$i}"
-  done
-
-  if [[ $col_stride -gt 1 ]]; then
-    places="{$root_core-$((root_core+col_stride-1))}"
-  else
-    places="{$root_core}"
-  fi
-
-  if [[ "${oversubscribe}" == true ]]; then
-    # Add cores from different columns, without their root cores
-    for j in $(seq 0 $((q-1)))
-    do
-      if [[ "$j" == "$myq" ]]; then
-        continue
-      fi
-      q_core=$((myp*row_stride + j*col_stride))
-      for i in $(seq $((q_core+1)) $((q_core+col_stride-1)))
+      q_gpu=$((jj+j+myp*q))
+      q_core=$((root_cores[q_gpu]))
+      offset=$(( (q_gpu>=size) ? 0 : 1))
+      for i in $(seq $((q_core+offset)) $((q_core+24-1)))
       do
         omp_places+=",{$i}"
       done
-      omp_num_threads=$((omp_num_threads+col_stride-1))
-
-      if [[ $col_stride -gt 2 ]]; then
-        places+=",{$((q_core+1))-$((q_core+col_stride-1))}"
-      elif [[ $col_stride -gt 1 ]]; then
-        places+=",{$((q_core+1))}"
-      fi
-
+      omp_num_threads=$((omp_num_threads+24-offset))
+      places+=",{$((q_core+offset))-$((q_core+23))}"
     done
-  fi
+  done
 fi
 
 # Export OpenMP config
