@@ -79,7 +79,8 @@ set(MPI_HOME ${HPL_MPI_DIR})
 find_package(MPI REQUIRED)
 
 # Add some paths
-list(APPEND CMAKE_PREFIX_PATH ${ROCBLAS_PATH} ${ROCM_PATH})
+list(APPEND CMAKE_PREFIX_PATH ${ROCBLAS_PATH} ${ROCM_PATH} )
+list(APPEND CMAKE_MODULE_PATH ${ROCM_PATH}/lib/cmake/hip )
 
 find_library(ROCTRACER NAMES roctracer64
              PATHS ${ROCM_PATH}/lib
