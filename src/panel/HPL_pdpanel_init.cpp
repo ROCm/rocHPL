@@ -396,13 +396,13 @@ void HPL_pdpanel_init(HPL_T_grid*  GRID,
   }
 
   if(PANEL->max_iwork_size < (size_t)(lwork) * sizeof(int)) {
-    if(PANEL->IWORK) { free(PANEL->IWORK); }
+    if(PANEL->IWORK) { CHECK_HIP_ERROR(hipFree(PANEL->IWORK)); }
     size_t numbytes = (size_t)(lwork) * sizeof(int);
 
-    if(Malloc(GRID, (void**)&(PANEL->IWORK), numbytes) != HPL_SUCCESS) {
+    if(deviceMalloc(GRID, (void**)&(PANEL->IWORK), numbytes) != HPL_SUCCESS) {
       HPL_pabort(__LINE__,
                  "HPL_pdpanel_init",
-                 "Host memory allocation failed for integer workspace.");
+                 "Memory allocation failed for integer workspace.");
     }
     PANEL->max_iwork_size = (size_t)(lwork) * sizeof(int);
   }
@@ -412,13 +412,13 @@ void HPL_pdpanel_init(HPL_T_grid*  GRID,
   /*Finally, we need 4 + 4*JB entries of scratch for pdfact */
   lwork = (size_t)(((4 + ((unsigned int)(JB) << 1)) << 1));
   if(PANEL->max_fwork_size < (size_t)(lwork) * sizeof(double)) {
-    if(PANEL->fWORK) { free(PANEL->fWORK); }
+    if(PANEL->fWORK) { CHECK_HIP_ERROR(hipFree(PANEL->fWORK)); }
     size_t numbytes = (size_t)(lwork) * sizeof(double);
 
-    if(Malloc(GRID, (void**)&(PANEL->fWORK), numbytes) != HPL_SUCCESS) {
+    if(deviceMalloc(GRID, (void**)&(PANEL->fWORK), numbytes) != HPL_SUCCESS) {
       HPL_pabort(__LINE__,
                  "HPL_pdpanel_init",
-                 "Host memory allocation failed for pdfact scratch workspace.");
+                 "Memory allocation failed for pdfact scratch workspace.");
     }
     PANEL->max_fwork_size = (size_t)(lwork) * sizeof(double);
   }
