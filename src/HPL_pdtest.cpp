@@ -382,8 +382,6 @@ void HPL_pdtest(HPL_T_test* TEST,
                                         1));
     }
 
-    CHECK_HIP_ERROR(
-        hipMemcpy(Bptr, Bptr, mat.mp * sizeof(double), hipMemcpyDeviceToHost));
   } else if(nq > 0) {
     const double one  = 1.0;
     const double zero = 0.0;
@@ -419,23 +417,19 @@ void HPL_pdtest(HPL_T_test* TEST,
                                         1));
     }
 
-    CHECK_HIP_ERROR(
-        hipMemcpy(Bptr, Bptr, mat.mp * sizeof(double), hipMemcpyDeviceToHost));
-
   } else {
     for(ii = 0; ii < mat.mp; ii++) Bptr[ii] = HPL_rzero;
   }
   /*
    * Reduce the distributed residual in process column 0
    */
+  CHECK_HIP_ERROR(hipDeviceSynchronize());
   if(mat.mp > 0)
     (void)HPL_reduce(Bptr, mat.mp, HPL_DOUBLE, HPL_SUM, 0, GRID->row_comm);
 
   /*
    * Compute || b - A x ||_oo
    */
-  CHECK_HIP_ERROR(
-      hipMemcpy(Bptr, Bptr, mat.mp * sizeof(double), hipMemcpyHostToDevice));
   resid0 = HPL_pdlange(GRID, HPL_NORM_I, N, 1, NB, Bptr, mat.ld);
 
   /*
