@@ -172,7 +172,7 @@ double HPL_pdlange(const HPL_T_grid* GRID,
    * ---------------------------------------------------------------------
    */
 
-  double   s, v0 = HPL_rzero, *work = NULL, *dwork = NULL;
+  double   s, v0 = HPL_rzero, *work = NULL;
   MPI_Comm Acomm, Ccomm, Rcomm;
   int      ii, jj, mp, mycol, myrow, npcol, nprow, nq;
 
@@ -194,30 +194,25 @@ double HPL_pdlange(const HPL_T_grid* GRID,
       if(nq == 1) { // column vector
         int id;
         CHECK_ROCBLAS_ERROR(rocblas_idamax(handle, mp, A, 1, &id));
-        CHECK_HIP_ERROR(hipMemcpy(
-            &v0, A + id - 1, 1 * sizeof(double), hipMemcpyDeviceToHost));
+        v0 = A[id - 1];
       } else if(mp == 1) { // row vector
         int id;
         CHECK_ROCBLAS_ERROR(rocblas_idamax(handle, nq, A, LDA, &id));
-        CHECK_HIP_ERROR(hipMemcpy(&v0,
-                                  A + ((size_t)id * LDA),
-                                  1 * sizeof(double),
-                                  hipMemcpyDeviceToHost));
+        v0 = A[(id-1) * static_cast<size_t>(LDA)];
       } else {
         // custom reduction kernels
-        CHECK_HIP_ERROR(hipMalloc(&dwork, GRID_SIZE * sizeof(double)));
+        CHECK_HIP_ERROR(hipMalloc(&work, GRID_SIZE * sizeof(double)));
 
         size_t grid_size = (nq * mp + BLOCK_SIZE - 1) / BLOCK_SIZE;
         grid_size        = (grid_size < GRID_SIZE) ? grid_size : GRID_SIZE;
 
-        normA_1<<<grid_size, BLOCK_SIZE>>>(nq, mp, A, LDA, dwork);
+        normA_1<<<grid_size, BLOCK_SIZE>>>(nq, mp, A, LDA, work);
         CHECK_HIP_ERROR(hipGetLastError());
-        normA_2<<<1, BLOCK_SIZE>>>(grid_size, dwork);
+        normA_2<<<1, BLOCK_SIZE>>>(grid_size, work);
         CHECK_HIP_ERROR(hipGetLastError());
 
-        CHECK_HIP_ERROR(
-            hipMemcpy(&v0, dwork, 1 * sizeof(double), hipMemcpyDeviceToHost));
-        CHECK_HIP_ERROR(hipFree(dwork));
+        v0 = work[0];
+        CHECK_HIP_ERROR(hipFree(work));
       }
     }
     (void)HPL_reduce((void*)(&v0), 1, HPL_DOUBLE, HPL_MAX, 0, Acomm);
@@ -226,7 +221,7 @@ double HPL_pdlange(const HPL_T_grid* GRID,
      * Find norm_1( A ).
      */
     if(nq > 0) {
-      work = (double*)malloc((size_t)(nq) * sizeof(double));
+      CHECK_HIP_ERROR(hipMalloc(&work, nq * sizeof(double)));
       if(work == NULL) {
         HPL_pabort(__LINE__, "HPL_pdlange", "Memory allocation failed");
       }
@@ -234,12 +229,10 @@ double HPL_pdlange(const HPL_T_grid* GRID,
       if(nq == 1) { // column vector
         CHECK_ROCBLAS_ERROR(rocblas_dasum(handle, mp, A, 1, work));
       } else {
-        CHECK_HIP_ERROR(hipMalloc(&dwork, nq * sizeof(double)));
-        norm1<<<nq, BLOCK_SIZE>>>(nq, mp, A, LDA, dwork);
+        norm1<<<nq, BLOCK_SIZE>>>(nq, mp, A, LDA, work);
         CHECK_HIP_ERROR(hipGetLastError());
-        CHECK_HIP_ERROR(
-            hipMemcpy(work, dwork, nq * sizeof(double), hipMemcpyDeviceToHost));
       }
+      CHECK_HIP_ERROR(hipDeviceSynchronize());
       /*
        * Find sum of global matrix columns, store on row 0 of process grid
        */
@@ -251,8 +244,7 @@ double HPL_pdlange(const HPL_T_grid* GRID,
         v0 = work[HPL_idamax(nq, work, 1)];
         v0 = Mabs(v0);
       }
-      if(work) free(work);
-      if(dwork) CHECK_HIP_ERROR(hipFree(dwork));
+      if(work) CHECK_HIP_ERROR(hipFree(work));
     }
     /*
      * Find max in row 0, store result in process (0,0)
@@ -264,7 +256,7 @@ double HPL_pdlange(const HPL_T_grid* GRID,
      * Find norm_inf( A )
      */
     if(mp > 0) {
-      work = (double*)malloc((size_t)(mp) * sizeof(double));
+      CHECK_HIP_ERROR(hipMalloc(&work, mp * sizeof(double)));
       if(work == NULL) {
         HPL_pabort(__LINE__, "HPL_pdlange", "Memory allocation failed");
       }
@@ -272,15 +264,12 @@ double HPL_pdlange(const HPL_T_grid* GRID,
       if(mp == 1) { // row vector
         CHECK_ROCBLAS_ERROR(rocblas_dasum(handle, nq, A, LDA, work));
       } else {
-        CHECK_HIP_ERROR(hipMalloc(&dwork, mp * sizeof(double)));
 
         size_t grid_size = (mp + BLOCK_SIZE - 1) / BLOCK_SIZE;
-        norminf<<<grid_size, BLOCK_SIZE>>>(nq, mp, A, LDA, dwork);
+        norminf<<<grid_size, BLOCK_SIZE>>>(nq, mp, A, LDA, work);
         CHECK_HIP_ERROR(hipGetLastError());
-        CHECK_HIP_ERROR(
-            hipMemcpy(work, dwork, mp * sizeof(double), hipMemcpyDeviceToHost));
       }
-
+      CHECK_HIP_ERROR(hipDeviceSynchronize());
       /*
        * Find sum of global matrix rows, store on column 0 of process grid
        */
@@ -292,8 +281,7 @@ double HPL_pdlange(const HPL_T_grid* GRID,
         v0 = work[HPL_idamax(mp, work, 1)];
         v0 = Mabs(v0);
       }
-      if(work) free(work);
-      if(dwork) CHECK_HIP_ERROR(hipFree(dwork));
+      if(work) CHECK_HIP_ERROR(hipFree(work));
     }
     /*
      * Find max in column 0, store result in process (0,0)

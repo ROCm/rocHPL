@@ -340,9 +340,7 @@ void HPL_pdtest(HPL_T_test* TEST,
       CHECK_ROCBLAS_ERROR(rocblas_idamax(handle, mat.mp, Bptr, 1, &id));
 
       // Note: id is in Fortran indexing
-      CHECK_HIP_ERROR(hipMemcpy(
-          &BnormI, Bptr + id - 1, 1 * sizeof(double), hipMemcpyDeviceToHost));
-      BnormI = Mabs(BnormI);
+      BnormI = Mabs(Bptr[id - 1]);
     } else {
       BnormI = HPL_rzero;
     }
