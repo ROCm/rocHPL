@@ -122,6 +122,26 @@ int HPL_pdmatgen(HPL_T_test* TEST,
     return HPL_FAILURE;
   }
 
+  #pragma omp parallel
+  {
+    /*First touch*/
+    const int thread_rank = omp_get_thread_num();
+    const int thread_size = omp_get_num_threads();
+    assert(thread_size <= max_nthreads);
+
+    for(int i = 0; i < mat->ld; i += NB) {
+      if((i / NB) % thread_size == thread_rank) {
+        const int mm = std::min(NB, mat->ld - i);
+        for(int k = 0; k < mat->nq; ++k) {
+          for(int j = 0; j < mm; ++j) {
+            mat->A[j + i + static_cast<size_t>(mat->ld) * k] = 0.0;
+          }
+        }
+      }
+    }
+  }
+
+
   int Anp;
   Mnumroc(Anp, mat->n, mat->nb, mat->nb, myrow, 0, nprow);
 
