@@ -105,7 +105,7 @@ int HPL_pdmatgen(HPL_T_test* TEST,
               "[%d,%d] %s",
               info[1],
               info[2],
-              "Device memory allocation failed for for A and b. Skip.");
+              "Device memory allocation failed for A and b. Skip.");
     return HPL_FAILURE;
   }
 
@@ -118,7 +118,7 @@ int HPL_pdmatgen(HPL_T_test* TEST,
               "[%d,%d] %s",
               info[1],
               info[2],
-              "Device memory allocation failed for for x. Skip.");
+              "Device memory allocation failed for x. Skip.");
     return HPL_FAILURE;
   }
 
@@ -129,12 +129,15 @@ int HPL_pdmatgen(HPL_T_test* TEST,
     const int thread_size = omp_get_num_threads();
     assert(thread_size <= max_nthreads);
 
-    for(int i = 0; i < mat->ld; i += NB) {
-      if((i / NB) % thread_size == thread_rank) {
-        const int mm = std::min(NB, mat->ld - i);
-        for(int k = 0; k < mat->nq; ++k) {
-          for(int j = 0; j < mm; ++j) {
-            mat->A[j + i + static_cast<size_t>(mat->ld) * k] = 0.0;
+    for(int nb = 0; nb < mat->nq; nb += NB) {
+      for(int mb = nb; mb < mat->ld; mb += NB) {
+        if(((mb-nb)/NB) % thread_size == thread_rank) {
+          const int nn = std::min(NB, mat->nq - nb);
+          const int mm = std::min(NB, mat->ld - mb);
+          for(int j = 0; j < nn; ++j) {
+            for(int i = 0; i < mm; i+=512) { // 4KB pages
+              mat->A[(i + mb) + static_cast<size_t>(mat->ld) * (j + nb)] = 0.0;
+            }
           }
         }
       }
@@ -165,6 +168,116 @@ int HPL_pdmatgen(HPL_T_test* TEST,
               "Device memory allocation failed for U workspace. Skip.");
     return HPL_FAILURE;
   }
+
+  return HPL_SUCCESS;
+}
+
+int HPL_WarmUp(HPL_T_test* TEST,
+               HPL_T_grid* GRID,
+               HPL_T_palg* ALGO,
+               HPL_T_pmat* mat) {
+
+  double target_warmup_time = 30.0; //seconds
+
+  #ifdef HPL_VERBOSE_PRINT
+    if((GRID->myrow == 0) && (GRID->mycol == 0)) {
+      printf("Running warmup for %g seconds \n", target_warmup_time);
+    }
+  #endif
+
+  int info[3];
+
+  int N = mat->n;
+  int NB = mat->nb;
+
+  double *L, *U;
+
+  int nu  = N;
+  int ldu = nu + NB + 256; /*extra space for potential padding*/
+
+  int ml  = N;
+  int ldl = ml + NB + 256; /*extra space for potential padding*/
+
+  size_t numbytesU = sizeof(double) * ldu * NB;
+  size_t numbytesL = sizeof(double) * ldl * NB;
+  if(deviceMalloc(GRID, (void**)&U, numbytesU, info) != HPL_SUCCESS) {
+    HPL_pwarn(TEST->outfp,
+              __LINE__,
+              "HPL_WarmUp",
+              "[%d,%d] %s",
+              info[1],
+              info[2],
+              "Device memory allocation failed for U. Skip.");
+    return HPL_FAILURE;
+  }
+  if(deviceMalloc(GRID, (void**)&L, numbytesL, info) != HPL_SUCCESS) {
+    HPL_pwarn(TEST->outfp,
+              __LINE__,
+              "HPL_WarmUp",
+              "[%d,%d] %s",
+              info[1],
+              info[2],
+              "Device memory allocation failed for L. Skip.");
+    return HPL_FAILURE;
+  }
+
+  const double one  = 1.0;
+  const double mone = -1.0;
+
+  hipStream_t stream;
+  CHECK_ROCBLAS_ERROR(rocblas_get_stream(handle, &stream));
+
+  int Niter = 10;
+
+  CHECK_HIP_ERROR(hipEventRecord(dgemmStart[0], stream));
+  for (int i=0;i<Niter;++i) {
+    CHECK_ROCBLAS_ERROR(rocblas_dgemm(handle,
+                                      rocblas_operation_none,
+                                      rocblas_operation_transpose,
+                                      N,
+                                      N,
+                                      NB,
+                                      &mone,
+                                      L,
+                                      ldl,
+                                      U,
+                                      ldu,
+                                      &one,
+                                      mat->A,
+                                      mat->ld));
+  }
+  CHECK_HIP_ERROR(hipEventRecord(dgemmStop[0], stream));
+
+  CHECK_HIP_ERROR(hipDeviceSynchronize());
+
+  float gemmTime = 0.0;
+  CHECK_HIP_ERROR(hipEventElapsedTime(&gemmTime, dgemmStart[0], dgemmStop[0]));
+  gemmTime /= Niter;
+
+  Niter = (target_warmup_time * 1000.0) / gemmTime;
+  Niter = std::max(1, Niter);
+
+  for (int i=0;i<Niter;++i) {
+    CHECK_ROCBLAS_ERROR(rocblas_dgemm(handle,
+                                      rocblas_operation_none,
+                                      rocblas_operation_transpose,
+                                      N,
+                                      N,
+                                      NB,
+                                      &mone,
+                                      L,
+                                      ldl,
+                                      U,
+                                      ldu,
+                                      &one,
+                                      mat->A,
+                                      mat->ld));
+  }
+
+  CHECK_HIP_ERROR(hipDeviceSynchronize());
+
+  CHECK_HIP_ERROR(hipFree(L));
+  CHECK_HIP_ERROR(hipFree(U));
 
   return HPL_SUCCESS;
 }

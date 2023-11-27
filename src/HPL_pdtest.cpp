@@ -88,6 +88,10 @@ void HPL_pdtest(HPL_T_test* TEST,
 
   (void)HPL_grid_info(GRID, &nprow, &npcol, &myrow, &mycol);
 
+  /* Create row-swapping data type */
+  MPI_Type_contiguous(NB + 4, MPI_DOUBLE, &PDFACT_ROW);
+  MPI_Type_commit(&PDFACT_ROW);
+
   /*
    * Allocate matrix, right-hand-side, and vector solution x. [ A | b ] is
    * N by N+1.  One column is added in every process column for the solve.
@@ -103,13 +107,18 @@ void HPL_pdtest(HPL_T_test* TEST,
     return;
   }
 
-  /* Create row-swapping data type */
-  MPI_Type_contiguous(NB + 4, MPI_DOUBLE, &PDFACT_ROW);
-  MPI_Type_commit(&PDFACT_ROW);
+  (void)HPL_barrier(GRID->all_comm);
+  ierr = HPL_WarmUp(TEST, GRID, ALGO, &mat);
+  if(ierr != HPL_SUCCESS) {
+    (TEST->kskip)++;
+    HPL_pdmatfree(&mat);
+    return;
+  }
 
   /*
    * generate matrix and right-hand-side, [ A | b ] which is N by N+1.
    */
+  (void)HPL_barrier(GRID->all_comm);
   HPL_pdrandmat(GRID, N, N + 1, NB, mat.A, mat.ld, HPL_ISEED);
 
   /*
