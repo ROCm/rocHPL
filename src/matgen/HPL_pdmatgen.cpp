@@ -187,19 +187,20 @@ int HPL_WarmUp(HPL_T_test* TEST,
 
   int info[3];
 
-  int N = mat->n;
   int NB = mat->nb;
+  int mp = mat->mp;
+  int nq = mat->nq-1;
 
   double *L, *U;
 
-  int nu  = N;
-  int ldu = nu + NB + 256; /*extra space for potential padding*/
+  int ldl = ((mp + 95) / 128) * 128 + 32; /*pad*/
+  int ldu = ((nq + 95) / 128) * 128 + 32; /*pad*/
 
-  int ml  = N;
-  int ldl = ml + NB + 256; /*extra space for potential padding*/
+  int ml = mp + NB + 256; /*extra space for potential padding*/
+  int nu = nq + NB + 256; /*extra space for potential padding*/
 
-  size_t numbytesU = sizeof(double) * ldu * NB;
-  size_t numbytesL = sizeof(double) * ldl * NB;
+  size_t numbytesU = sizeof(double) * nu * NB;
+  size_t numbytesL = sizeof(double) * ml * NB;
   if(deviceMalloc(GRID, (void**)&U, numbytesU, info) != HPL_SUCCESS) {
     HPL_pwarn(TEST->outfp,
               __LINE__,
@@ -234,8 +235,8 @@ int HPL_WarmUp(HPL_T_test* TEST,
     CHECK_ROCBLAS_ERROR(rocblas_dgemm(handle,
                                       rocblas_operation_none,
                                       rocblas_operation_transpose,
-                                      N,
-                                      N,
+                                      mp,
+                                      nq,
                                       NB,
                                       &mone,
                                       L,
@@ -261,8 +262,8 @@ int HPL_WarmUp(HPL_T_test* TEST,
     CHECK_ROCBLAS_ERROR(rocblas_dgemm(handle,
                                       rocblas_operation_none,
                                       rocblas_operation_transpose,
-                                      N,
-                                      N,
+                                      mp,
+                                      nq,
                                       NB,
                                       &mone,
                                       L,
