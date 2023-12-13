@@ -106,7 +106,7 @@ install_blis( )
 {
   if [ ! -d "./tpl/blis" ]; then
     mkdir -p tpl && cd tpl
-    git clone https://github.com/amd/blis --branch 4.0
+    git clone https://github.com/amd/blis --branch 4.1
     check_exit_code 2
     cd blis; ./configure --prefix=${PWD} --enable-cblas --disable-sup-handling auto;
     check_exit_code 2
