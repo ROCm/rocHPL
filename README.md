@@ -14,7 +14,7 @@ rocHPL is a benchmark based on the [HPL][] benchmark application, implemented on
 You can build rocHPL using the `install.sh` script
 ```
 # Clone rocHPL using git
-git clone https://github.com/ROCmSoftwarePlatform/rocHPL.git
+git clone https://github.com/ROCm/rocHPL.git
 
 # Go to rocHPL directory
 cd rocHPL
@@ -141,11 +141,11 @@ Please use [the issue tracker][] for bugs and feature requests.
 The [license file][] can be found in the main repository.
 
 [HPL]: http://icl.utk.edu/hpl/
-[ROCm]: https://github.com/RadeonOpenCompute/ROCm
-[HIP]: https://github.com/ROCm-Developer-Tools/HIP
-[rocBLAS]: https://github.com/ROCmSoftwarePlatform/rocBLAS
+[ROCm]: https://github.com/ROCm/ROCm
+[HIP]: https://github.com/ROCm/HIP
+[rocBLAS]: https://github.com/ROCm/rocBLAS
 [BLIS]: https://github.com/amd/blis
 [OpenMPI]: https://github.com/open-mpi/ompi
 [UCX]: https://github.com/openucx/ucx
-[the issue tracker]: https://github.com/ROCmSoftwarePlatform/rocHPL/issues
-[license file]: https://github.com/ROCmSoftwarePlatform/rocHPL
+[the issue tracker]: https://github.com/ROCm/rocHPL/issues
+[license file]: https://github.com/ROCm/rocHPL
