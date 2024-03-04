@@ -95,7 +95,7 @@ HPL.out      output file name (if any)
 8            memory alignment in double (> 0)
 ```
 
-The `mpirun_rochpl` wraps a second script, `run_rochpl`, wherein some CPU core bindings are determined autmotically based on the node-local MPI grid. Users wishing to launch rocHPL via a workload manager such as slurm may directly use this run script. For example,
+The `mpirun_rochpl` wraps a second script, `run_rochpl`, wherein some CPU core bindings are determined automatically based on the node-local MPI grid. Users wishing to launch rocHPL via a workload manager such as slurm may directly use this run script. For example,
 ```
 srun -N 2 -n 16 run_rochpl -P 4 -Q 4 -N 128000 --NB 512
 ```
@@ -107,7 +107,7 @@ or
 ```
 srun -N 2 -n 16 run_rochpl -P 4 -Q 4 -p 4 -q 2 -N 128000 --NB 512
 ```
-This helps to control where/how much inter-node communication is occuring. 
+This helps to control where/how much inter-node communication is occurring. 
 
 ## Performance evaluation
 rocHPL is typically weak scaled so that the global matrix fills all available VRAM on all GPUs. The matrix size N is usually selected to be a multiple of the blocksize NB. Some sample runs on 32GB MI100 GPUs include:
@@ -123,7 +123,7 @@ See [the Wiki](../../wiki/Common-rocHPL-run-configurations) for some common run 
 ## Testing rocHPL
 At the end of each benchmark run, residual error checking is computed, and PASS or FAIL is printed to output.
 
-The simplest suite of tests should run configurations from 1 to 4 GPUs to exercise different communcation code paths. For example the tests:
+The simplest suite of tests should run configurations from 1 to 4 GPUs to exercise different communication code paths. For example the tests:
 ```
 mpirun_rochpl -P 1 -Q 1 -N 45312
 mpirun_rochpl -P 1 -Q 2 -N 45312
