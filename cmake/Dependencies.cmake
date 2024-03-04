@@ -63,8 +63,12 @@ else()
   # If we still havent found a blas library, maybe cmake will?
   find_package(BLAS REQUIRED)
 endif()
-add_library(BLAS::BLAS IMPORTED INTERFACE)
-set_property(TARGET BLAS::BLAS PROPERTY INTERFACE_LINK_LIBRARIES  "${BLAS_LP64_LIBRARIES};${BLAS_SEQ_LIBRARIES};${BLAS_LIBRARIES}")
+
+if(NOT TARGET BLAS::BLAS)
+    # Prior to 3.18, CMake did not define this target.
+    add_library(BLAS::BLAS IMPORTED INTERFACE)
+    set_property(TARGET BLAS::BLAS PROPERTY INTERFACE_LINK_LIBRARIES  "${BLAS_LP64_LIBRARIES};${BLAS_SEQ_LIBRARIES};${BLAS_LIBRARIES}")
+endif()
 
 # Find OpenMP package
 find_package(OpenMP)
