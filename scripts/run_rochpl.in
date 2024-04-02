@@ -360,12 +360,12 @@ elif [[ "$platform" == "ParryPeak" || "$platform" == "Sh54p" ]]; then
       exit 1
     fi
 
-    # GPU0 cores="48-71"
-    # GPU1 cores="72-95"
-    # GPU2 cores="0-23"
-    # GPU3 cores="24-47"
+    # GPU0 cores="0-23"
+    # GPU1 cores="24-47"
+    # GPU2 cores="48-71"
+    # GPU3 cores="72-95"
 
-    root_cores=(48 72 0 24)
+    root_cores=(0 24 48 72)
     root_core=${root_cores[mygpu]}
 
     # First omp place is the root core
@@ -381,38 +381,39 @@ elif [[ "$platform" == "ParryPeak" || "$platform" == "Sh54p" ]]; then
     places="{$root_core-$((root_core+23))}"
 
     # Loop through unassigned sockets
-    for c in $(seq $((mygpu+size)) $size 3)
-    do
-      iroot_core=${root_cores[c]}
-      for i in $(seq $((iroot_core)) $((iroot_core+24-1)))
-      do
-        omp_places+=",{$i}"
-      done
-      omp_num_threads=$((omp_num_threads+24))
-      places+=",{$iroot_core-$((iroot_core+23))}"
-    done
+    #NC: turning this off for now. Only assign cores on one socket per proc
+    #for c in $(seq $((mygpu+size)) $size 3)
+    #do
+    #  iroot_core=${root_cores[c]}
+    #  for i in $(seq $((iroot_core)) $((iroot_core+24-1)))
+    #  do
+    #    omp_places+=",{$i}"
+    #  done
+    #  omp_num_threads=$((omp_num_threads+24))
+    #  places+=",{$iroot_core-$((iroot_core+23))}"
+    #done
 
-    if [[ "${oversubscribe}" == true ]]; then
-      # Add cores from different columns, without their root cores
-      for j in $(seq 0  $((q-1)))
-      do
-        if [[ "$j" == "$myq" ]]; then
-          continue
-        fi
-        for jj in $(seq 0 $size 3)
-        do
-          q_gpu=$((jj+j+myp*q))
-          q_core=$((root_cores[q_gpu]))
-          offset=$(( (q_gpu>=size) ? 0 : 1))
-          for i in $(seq $((q_core+offset)) $((q_core+24-1)))
-          do
-            omp_places+=",{$i}"
-          done
-          omp_num_threads=$((omp_num_threads+24-offset))
-          places+=",{$((q_core+offset))-$((q_core+23))}"
-        done
-      done
-    fi
+    #if [[ "${oversubscribe}" == true ]]; then
+    #  # Add cores from different columns, without their root cores
+    #  for j in $(seq 0  $((q-1)))
+    #  do
+    #    if [[ "$j" == "$myq" ]]; then
+    #      continue
+    #    fi
+    #    for jj in $(seq 0 $size 3)
+    #    do
+    #      q_gpu=$((jj+j+myp*q))
+    #      q_core=$((root_cores[q_gpu]))
+    #      offset=$(( (q_gpu>=size) ? 0 : 1))
+    #      for i in $(seq $((q_core+offset)) $((q_core+24-1)))
+    #      do
+    #        omp_places+=",{$i}"
+    #      done
+    #      omp_num_threads=$((omp_num_threads+24-offset))
+    #      places+=",{$((q_core+offset))-$((q_core+23))}"
+    #    done
+    #  done
+    #fi
 
 else
   # Default core mapping
