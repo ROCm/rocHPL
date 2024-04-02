@@ -141,18 +141,6 @@ if(HPL_PROGRESS_REPORT)
   target_compile_definitions(rochpl PRIVATE HPL_PROGRESS_REPORT)
 endif()
 
-# Target include directories
-target_include_directories(rochpl
-                           PRIVATE
-                           $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-                           $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>
-                           $<BUILD_INTERFACE:${HIP_INCLUDE_DIRS}>
-                           $<BUILD_INTERFACE:${HPL_MPI_DIR}/include>
-                           $<BUILD_INTERFACE:${ROCM_PATH}/include/roctracer>)
-
-#HIP
-target_link_libraries(rochpl PRIVATE hip::host)
-
 # MPI
 target_link_libraries(rochpl PRIVATE MPI::MPI_CXX)
 
@@ -164,6 +152,18 @@ target_link_libraries(rochpl PRIVATE BLAS::BLAS)
 target_link_libraries(rochpl PRIVATE roc::rocblas)
 target_link_libraries(rochpl PRIVATE roc::roctracer)
 target_link_libraries(rochpl PRIVATE roc::roctx)
+
+#HIP
+target_link_libraries(rochpl PRIVATE hip::host)
+
+# Target include directories
+target_include_directories(rochpl
+                           PRIVATE
+                           $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+                           $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>
+                           $<BUILD_INTERFACE:${HIP_INCLUDE_DIRS}>
+                           $<BUILD_INTERFACE:${HPL_MPI_DIR}/include>
+                           $<BUILD_INTERFACE:${ROCM_PATH}/include/roctracer>)
 
 # Target properties
 set_target_properties(rochpl PROPERTIES VERSION ${rochpl_VERSION})

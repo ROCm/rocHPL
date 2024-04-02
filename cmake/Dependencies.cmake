@@ -105,9 +105,6 @@ set_target_properties(roc::roctx PROPERTIES
   IMPORTED_LOCATION "${ROCTX}"
   IMPORTED_SONAME "libroctx64.so")
 
-# Find HIP package
-find_package(HIP REQUIRED)
-
 # rocblas
 find_package(rocblas REQUIRED)
 
@@ -118,6 +115,9 @@ message("-- rocBLAS include dirs: ${rocblas_INCLUDE_DIRS}")
 message("-- rocBLAS libraries:    ${rocblas_LIBRARIES}")
 
 get_filename_component(ROCBLAS_LIB_PATH ${rocblas_LIBRARIES} DIRECTORY)
+
+# Find HIP package
+find_package(HIP REQUIRED)
 
 # ROCm cmake package
 find_package(ROCM QUIET CONFIG PATHS ${CMAKE_PREFIX_PATH})
