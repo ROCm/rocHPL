@@ -197,6 +197,12 @@ elif [[ -n ${SLURM_LOCALID+x} ]]; then
   size=$SLURM_TASKS_PER_NODE
   #Slurm can return a string like "2(x2),1". Get the first number
   size=$(echo $size | sed -r 's/^([^.]+).*$/\1/; s/^[^0-9]*([0-9]+).*$/\1/')
+elif [[ -n ${FLUX_TASK_LOCAL_ID+x} ]]; then
+  globalRank=$FLUX_TASK_RANK
+  globalSize=$FLUX_JOB_SIZE
+  nnodes=$FLUX_JOB_NNODES
+  rank=$FLUX_TASK_LOCAL_ID
+  size=$((globalSize/nnodes))
 fi
 set -u
 
@@ -347,7 +353,7 @@ if [[ "$platform" == "BardPeak" || "$platform" == "HPE_CRAY_EX235A" ]]; then
     done
   fi
 
-elif [[ "$platform" == "ParryPeak" || "$platform" == "Sh54p" ]]; then
+elif [[ "$platform" == "ParryPeak" || "$platform" == "Sh54p" || "$platform" == "HPE_CRAY_EX255a" ]]; then
     # Special core mapping for ParryPeak
 
     if [[ $globalRank == 0 ]]; then
@@ -364,6 +370,8 @@ elif [[ "$platform" == "ParryPeak" || "$platform" == "Sh54p" ]]; then
     # GPU1 cores="24-47"
     # GPU2 cores="48-71"
     # GPU3 cores="72-95"
+
+    mygpu=$((myq*p+myp))
 
     root_cores=(0 24 48 72)
     root_core=${root_cores[mygpu]}
