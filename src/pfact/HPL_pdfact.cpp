@@ -75,8 +75,8 @@ void HPL_pdfact(HPL_T_panel* PANEL) {
   /*
    * Factor the panel - Update the panel pointers
    */
-  double max_value[128];
-  int    max_index[128];
+  double max_value[512];
+  int    max_index[512];
 
   roctxRangePush("pdfact");
 
@@ -84,7 +84,7 @@ void HPL_pdfact(HPL_T_panel* PANEL) {
   {
     const int thread_rank = omp_get_thread_num();
     const int thread_size = omp_get_num_threads();
-    assert(thread_size <= 128);
+    assert(thread_size <= 512);
 
     PANEL->algo->rffun(PANEL,
                        PANEL->mp,
