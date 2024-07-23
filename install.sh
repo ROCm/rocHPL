@@ -143,7 +143,7 @@ install_openmpi( )
 
   if [ ! -d "./tpl/ucx" ]; then
     mkdir -p tpl && cd tpl
-    git clone --branch v1.14.1 https://github.com/openucx/ucx.git ucx
+    git clone --branch v1.16.0 https://github.com/openucx/ucx.git ucx
     check_exit_code 2
     cd ucx;
     ./autogen.sh; ./autogen.sh #why do we have to run this twice?
@@ -184,7 +184,7 @@ install_openmpi( )
 
   if [ ! -d "./tpl/openmpi" ]; then
     mkdir -p tpl && cd tpl
-    git clone --branch v4.1.5 https://github.com/open-mpi/ompi.git openmpi
+    git clone --branch v5.0.3 --recursive https://github.com/open-mpi/ompi.git openmpi
     check_exit_code 2
     cd openmpi; ./autogen.pl;
     check_exit_code 2
