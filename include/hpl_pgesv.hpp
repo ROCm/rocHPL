@@ -92,6 +92,11 @@ typedef struct HPL_S_pmat {
 extern hipEvent_t swapStartEvent[HPL_N_UPD], update[HPL_N_UPD];
 extern hipEvent_t swapUCopyEvent[HPL_N_UPD], swapWCopyEvent[HPL_N_UPD];
 extern hipEvent_t dgemmStart[HPL_N_UPD], dgemmStop[HPL_N_UPD];
+extern hipEvent_t dtrsmStart[HPL_N_UPD], dtrsmStop[HPL_N_UPD];
+extern hipEvent_t rowGatherStart[HPL_N_UPD], rowGatherStop[HPL_N_UPD];
+extern hipEvent_t rowScatterStart[HPL_N_UPD], rowScatterStop[HPL_N_UPD];
+
+extern double pdfact_time, bcast_time, scatter_time[HPL_N_UPD], gather_time[HPL_N_UPD];
 
 /*
  * ---------------------------------------------------------------------

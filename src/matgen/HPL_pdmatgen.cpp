@@ -161,7 +161,7 @@ int HPL_WarmUp(HPL_T_test* TEST,
                HPL_T_palg* ALGO,
                HPL_T_pmat* mat) {
 
-  double target_warmup_time = 30.0; //seconds
+  double target_warmup_time = 1.0; //seconds
 
   #ifdef HPL_VERBOSE_PRINT
     if((GRID->myrow == 0) && (GRID->mycol == 0)) {

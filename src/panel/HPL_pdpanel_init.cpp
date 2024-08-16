@@ -422,4 +422,18 @@ void HPL_pdpanel_init(HPL_T_grid*  GRID,
     }
     PANEL->max_fwork_size = (size_t)(lwork) * sizeof(double);
   }
+
+  /* nb entries of scratch for pdfact swap timers */
+  lwork = (size_t)(nb);
+  if(PANEL->max_timer_size < (size_t)(lwork) * sizeof(double)) {
+    if(PANEL->timers) { free(PANEL->timers); }
+    size_t numbytes = (size_t)(lwork) * sizeof(double);
+
+    if(Malloc(GRID, (void**)&(PANEL->timers), numbytes) != HPL_SUCCESS) {
+      HPL_pabort(__LINE__,
+                 "HPL_pdpanel_init",
+                 "Host memory allocation failed for pdfact scratch workspace.");
+    }
+    PANEL->max_timer_size = (size_t)(lwork) * sizeof(double);
+  }
 }

@@ -92,6 +92,7 @@ void HPL_pdupdateNT(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
     /*
      * 1 x Q case
      */
+    CHECK_HIP_ERROR(hipEventRecord(dtrsmStart[UPD], stream));
     CHECK_ROCBLAS_ERROR(rocblas_dtrsm(handle,
                                       rocblas_side_left,
                                       rocblas_fill_lower,
@@ -104,12 +105,14 @@ void HPL_pdupdateNT(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
                                       jb,
                                       Aptr,
                                       lda));
+    CHECK_HIP_ERROR(hipEventRecord(dtrsmStop[UPD], stream));
 
     HPL_dlatcpy_gpu(n, jb, Aptr, lda, Uptr, LDU);
   } else {
     /*
      * Compute redundantly row block of U and update trailing submatrix
      */
+    CHECK_HIP_ERROR(hipEventRecord(dtrsmStart[UPD], stream));
     CHECK_ROCBLAS_ERROR(rocblas_dtrsm(handle,
                                       rocblas_side_right,
                                       rocblas_fill_lower,
@@ -122,6 +125,7 @@ void HPL_pdupdateNT(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
                                       jb,
                                       Uptr,
                                       LDU));
+    CHECK_HIP_ERROR(hipEventRecord(dtrsmStop[UPD], stream));
   }
 
   /*

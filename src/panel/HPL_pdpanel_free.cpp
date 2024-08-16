@@ -44,9 +44,11 @@ int HPL_pdpanel_free(HPL_T_panel* PANEL) {
 
     if(PANEL->IWORK) CHECK_HIP_ERROR(hipFree(PANEL->IWORK));
     if(PANEL->fWORK) CHECK_HIP_ERROR(hipFree(PANEL->fWORK));
+    if(PANEL->timers) free(PANEL->timers);
 
     PANEL->max_iwork_size = 0;
     PANEL->max_fwork_size = 0;
+    PANEL->max_timer_size = 0;
   }
 
   return (HPL_SUCCESS);

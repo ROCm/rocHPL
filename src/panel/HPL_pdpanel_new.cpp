@@ -92,12 +92,14 @@ void HPL_pdpanel_new(HPL_T_grid*   GRID,
   p->max_uwork_size       = 0;
   p->max_iwork_size       = 0;
   p->max_fwork_size       = 0;
+  p->max_timer_size       = 0;
   p->free_work_now        = 0;
   p->A                    = NULL;
   p->LWORK                = NULL;
   p->UWORK                = NULL;
   p->fWORK                = NULL;
   p->IWORK                = NULL;
+  p->timers               = NULL;
   HPL_pdpanel_init(GRID, ALGO, M, N, JB, A, IA, JA, TAG, p);
   *PANEL = p;
 }

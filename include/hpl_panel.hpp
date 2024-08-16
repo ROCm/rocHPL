@@ -36,6 +36,7 @@ typedef struct HPL_S_panel {
   double*            LWORK; /* L work space */
   double*            UWORK; /* U work space */
   double*            fWORK; /* pdfact work space */
+  double*            timers;  /* timers work space */
   double*            L2;    /* ptr to L */
   double*            L1;    /* ptr to jb x jb upper block of A */
   double*            DINFO; /* ptr to replicated scalar info */
@@ -83,6 +84,7 @@ typedef struct HPL_S_panel {
   unsigned int       max_uwork_size;       /* largest size of WORK space */
   unsigned int       max_iwork_size;       /* largest size of IWORK space */
   unsigned int       max_fwork_size;       /* largest size of fWORK space */
+  unsigned int       max_timer_size;       /* largest size of timer space */
   unsigned int       free_work_now;        /* should we deallocate */
 } HPL_T_panel;
 

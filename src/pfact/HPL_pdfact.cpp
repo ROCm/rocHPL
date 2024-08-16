@@ -78,9 +78,14 @@ void HPL_pdfact(HPL_T_panel* PANEL) {
   double max_value[128];
   int    max_index[128];
 
+  const int maxThreads = omp_get_max_threads();
+  const int numThreads = std::min(maxThreads, (PANEL->mp+jb-1)/jb);
+
+  timePoint_t pdfact_start = std::chrono::high_resolution_clock::now();
+
   roctxRangePush("pdfact");
 
-#pragma omp parallel shared(max_value, max_index)
+#pragma omp parallel shared(max_value, max_index) num_threads(numThreads)
   {
     const int thread_rank = omp_get_thread_num();
     const int thread_size = omp_get_num_threads();
@@ -98,6 +103,10 @@ void HPL_pdfact(HPL_T_panel* PANEL) {
   }
 
   roctxRangePop();
+
+  timePoint_t pdfact_end = std::chrono::high_resolution_clock::now();
+
+  pdfact_time = std::chrono::duration_cast<std::chrono::microseconds>(pdfact_end - pdfact_start).count()/1000.0;
 
   PANEL->A = Mptr(PANEL->A, 0, jb, PANEL->lda);
   PANEL->nq -= jb;
