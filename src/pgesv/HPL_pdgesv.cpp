@@ -432,9 +432,19 @@ void print_pdfact_stats(HPL_T_panel* PANEL) {
   int mp_max=0;
   MPI_Reduce(&PANEL->mp, &mp_max, 1, MPI_INT, MPI_MAX, 0, PANEL->grid->col_comm);
 
-  //Get the largest pdfact timer
+  //Get the largest pdfact timer in the column
   double pdfact_time_max=0;
   MPI_Reduce(&pdfact_time, &pdfact_time_max, 1, MPI_DOUBLE, MPI_MAX, 0, PANEL->grid->col_comm);
+
+  //For swapping timers, noise can shift things around, but to isolate the MPI time only, we min across the column
+  double swap_avg_col=0;
+  double swap_min_col=0;
+  double swap_max_col=0;
+  double swap_stddev_col=0;
+  MPI_Reduce(&swap_avg, &swap_avg_col, 1, MPI_DOUBLE, MPI_MIN, 0, PANEL->grid->col_comm);
+  MPI_Reduce(&swap_min, &swap_min_col, 1, MPI_DOUBLE, MPI_MIN, 0, PANEL->grid->col_comm);
+  MPI_Reduce(&swap_max, &swap_max_col, 1, MPI_DOUBLE, MPI_MIN, 0, PANEL->grid->col_comm);
+  MPI_Reduce(&swap_stddev, &swap_stddev_col, 1, MPI_DOUBLE, MPI_MIN, 0, PANEL->grid->col_comm);
 
   MPI_Request request[5];
   double pdfactTimeRoot=0.;
@@ -452,10 +462,10 @@ void print_pdfact_stats(HPL_T_panel* PANEL) {
   }
   if (PANEL->grid->mycol==PANEL->pcol && PANEL->grid->myrow==0) {
     MPI_Send(&pdfact_time_max, 1, MPI_DOUBLE, 0, 0, PANEL->grid->row_comm);
-    MPI_Send(&swap_avg,    1, MPI_DOUBLE, 0, 1, PANEL->grid->row_comm);
-    MPI_Send(&swap_min,    1, MPI_DOUBLE, 0, 2, PANEL->grid->row_comm);
-    MPI_Send(&swap_max,    1, MPI_DOUBLE, 0, 3, PANEL->grid->row_comm);
-    MPI_Send(&swap_stddev, 1, MPI_DOUBLE, 0, 4, PANEL->grid->row_comm);
+    MPI_Send(&swap_avg_col,    1, MPI_DOUBLE, 0, 1, PANEL->grid->row_comm);
+    MPI_Send(&swap_min_col,    1, MPI_DOUBLE, 0, 2, PANEL->grid->row_comm);
+    MPI_Send(&swap_max_col,    1, MPI_DOUBLE, 0, 3, PANEL->grid->row_comm);
+    MPI_Send(&swap_stddev_col, 1, MPI_DOUBLE, 0, 4, PANEL->grid->row_comm);
   }
 
   if (PANEL->grid->mycol==0 && PANEL->grid->myrow==0) {

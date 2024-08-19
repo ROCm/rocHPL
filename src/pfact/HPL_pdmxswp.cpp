@@ -123,7 +123,7 @@ void HPL_pdmxswp(HPL_T_panel* PANEL,
   timePoint_t swap_start = std::chrono::high_resolution_clock::now();
   HPL_all_reduce_dmxswp(WORK, cnt0, icurrow, comm, Wwork);
   timePoint_t swap_end = std::chrono::high_resolution_clock::now();
-  PANEL->timers[II] = std::chrono::duration_cast<std::chrono::microseconds>(swap_end - swap_start).count();
+  PANEL->timers[JJ] = std::chrono::duration_cast<std::chrono::microseconds>(swap_end - swap_start).count();
 
   /*
    * Save the global pivot index in pivot array
