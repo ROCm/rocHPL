@@ -61,6 +61,7 @@ __global__ void pdfact(const int M,
                        double   *__restrict__ A,
                        const int LDA,
                        const int curr,
+                       const int myrow,
                        const int JJ,
                        double   *__restrict__ L1,
                        int      *__restrict__ loc_workspace,
@@ -176,9 +177,11 @@ __global__ void pdfact(const int M,
     if (t==0) {
       const double maxval = __hip_atomic_load(&host_workspace[0], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
       const double maxloc = __hip_atomic_load(&host_workspace[1], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+      const double maxrow = __hip_atomic_load(&host_workspace[3], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
 
       __hip_atomic_store(&dev_workspace[0], maxval, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
       __hip_atomic_store(&dev_workspace[1], maxloc, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+      __hip_atomic_store(&dev_workspace[3], maxrow, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
 
       //Unlock other blocks
       __hip_atomic_store(locks+l, 0, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
@@ -200,8 +203,9 @@ __global__ void pdfact(const int M,
     l = (l+1)%2;
 
     // Perform the row swap
-    const int srcRow = static_cast<int>(__hip_atomic_load(&dev_workspace[1], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT));
-    const int srcBlock = srcRow/NB;
+    const int srcloc = static_cast<int>(__hip_atomic_load(&dev_workspace[1], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT));
+    const int srcrow = static_cast<int>(__hip_atomic_load(&dev_workspace[3], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT));
+    const int srcBlock = srcloc/NB;
 
     //Read in the Amax row to LDS
     const double amax = __hip_atomic_load(&Amax[t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
@@ -215,8 +219,8 @@ __global__ void pdfact(const int M,
       //shift down a row
       ii++;
     }
-    if (block == srcBlock) {
-      A[srcRow + t*LDA] = __hip_atomic_load(&Acur[t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+    if (myrow == srcrow && block == srcBlock) {
+      A[srcloc + t*LDA] = __hip_atomic_load(&Acur[t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
     }
 
     __syncthreads();
@@ -336,8 +340,10 @@ __global__ void pdfact(const int M,
       if (t==0) {
         const double maxval = __hip_atomic_load(&host_workspace[0], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
         const double maxloc = __hip_atomic_load(&host_workspace[1], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+        const double maxrow = __hip_atomic_load(&host_workspace[3], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
         __hip_atomic_store(&dev_workspace[0], maxval, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
         __hip_atomic_store(&dev_workspace[1], maxloc, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+        __hip_atomic_store(&dev_workspace[3], maxrow, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
 
         //Unlock other blocks
         __hip_atomic_store(locks+l, 0, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
@@ -355,8 +361,10 @@ __global__ void pdfact(const int M,
   }
 
   // Perform final row swap and update
-  const int srcRow = static_cast<int>(__hip_atomic_load(&dev_workspace[1], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT));
-  const int srcBlock = srcRow/NB;
+  const double gmax = __hip_atomic_load(&dev_workspace[0], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  const int srcloc = static_cast<int>(__hip_atomic_load(&dev_workspace[1], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT));
+  const int srcrow = static_cast<int>(__hip_atomic_load(&dev_workspace[3], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT));
+  const int srcBlock = srcloc/NB;
 
   if (block==0 && curr) {
     L1[t + ii*NB] = __hip_atomic_load(&Amax[t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
@@ -364,11 +372,9 @@ __global__ void pdfact(const int M,
     //shift down a row
     ii++;
   }
-  if (block == srcBlock) {
-    A[srcRow + t*LDA] = __hip_atomic_load(&Acur[t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  if (myrow == srcrow && block == srcBlock) {
+    A[srcloc + t*LDA] = __hip_atomic_load(&Acur[t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
   }
-
-  const double gmax = __hip_atomic_load(&dev_workspace[0], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
 
   __syncthreads();
 
@@ -390,6 +396,11 @@ void HPL_pdpanrlT_device(HPL_T_panel* PANEL,
   lda  = PANEL->lda;
   L1   = PANEL->L1;
   curr = PANEL->grid->myrow == PANEL->prow ? 1 : 0;
+
+  HPL_T_grid* grid = PANEL->grid;
+  MPI_Comm    comm = grid->col_comm;
+  int myrow   = grid->myrow;
+  int nprow   = grid->nprow;
 
   jj = ICOFF;
   if(curr != 0) {
@@ -415,6 +426,7 @@ void HPL_pdpanrlT_device(HPL_T_panel* PANEL,
                        A + ii,
                        lda,
                        curr,
+                       myrow,
                        jj,
                        L1 + ii * PANEL->jb,
                        PANEL->loc_workspace,
@@ -425,12 +437,6 @@ void HPL_pdpanrlT_device(HPL_T_panel* PANEL,
                        PANEL->locks);
   }
 
-  HPL_T_grid* grid = PANEL->grid;
-  MPI_Comm    comm = grid->col_comm;
-
-
-  int myrow   = grid->myrow;
-  int nprow   = grid->nprow;
   int NB      = PANEL->nb;
   int icurrow = PANEL->prow;
 
@@ -466,7 +472,6 @@ void HPL_pdpanrlT_device(HPL_T_panel* PANEL,
       WORK[0] = WORK[1] = WORK[2] = HPL_rzero;
       WORK[3]                     = (double)(PANEL->grid->nprow);
     }
-
     HPL_all_reduce_dmxswp(WORK, cnt0, icurrow, comm, Wwork);
 
 #ifdef HPL_DETAILED_TIMING
