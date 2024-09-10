@@ -213,11 +213,11 @@ __global__ void pdfact(const int M,
 
     const double gmax = __hip_atomic_load(&dev_workspace[0], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
 
-    if (block==0 && curr) {
-      L1[t + ii*NB] = amax;
+    if (block==0) {
+      L1[t + (jj-1)*NB] = amax;
 
       //shift down a row
-      ii++;
+      if (curr) ii++;
     }
     if (myrow == srcrow && block == srcBlock) {
       A[srcloc + t*LDA] = __hip_atomic_load(&Acur[t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
@@ -366,11 +366,11 @@ __global__ void pdfact(const int M,
   const int srcrow = static_cast<int>(__hip_atomic_load(&dev_workspace[3], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT));
   const int srcBlock = srcloc/NB;
 
-  if (block==0 && curr) {
-    L1[t + ii*NB] = __hip_atomic_load(&Amax[t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  if (block==0) {
+    L1[t + (JB-1)*NB] = __hip_atomic_load(&Amax[t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
 
     //shift down a row
-    ii++;
+    if (curr) ii++;
   }
   if (myrow == srcrow && block == srcBlock) {
     A[srcloc + t*LDA] = __hip_atomic_load(&Acur[t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
@@ -428,7 +428,7 @@ void HPL_pdpanrlT_device(HPL_T_panel* PANEL,
                        curr,
                        myrow,
                        jj,
-                       L1 + ii * PANEL->jb,
+                       L1 + jj * PANEL->jb,
                        PANEL->loc_workspace,
                        PANEL->max_workspace,
                        PANEL->dev_workspace,
@@ -456,7 +456,7 @@ void HPL_pdpanrlT_device(HPL_T_panel* PANEL,
 
     if (M>0) {
       int ilindx = static_cast<int>(WORK[1]);
-      int kk     = PANEL->ii + ICOFF + (ilindx);
+      int kk     = PANEL->ii + ii + (ilindx);
       int igindx = 0;
       Mindxl2g(igindx, kk, NB, NB, myrow, 0, nprow);
       /*

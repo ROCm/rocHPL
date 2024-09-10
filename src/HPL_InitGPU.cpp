@@ -18,6 +18,7 @@ hipStream_t computeStream, dataStream;
 hipEvent_t swapStartEvent[HPL_N_UPD], update[HPL_N_UPD];
 hipEvent_t dgemmStart[HPL_N_UPD], dgemmStop[HPL_N_UPD];
 hipEvent_t pfactStart, pfactStop;
+hipEvent_t panelCopy;
 
 static char host_name[MPI_MAX_PROCESSOR_NAME];
 
@@ -99,6 +100,7 @@ void HPL_InitGPU(const HPL_T_grid* GRID) {
 
   CHECK_HIP_ERROR(hipEventCreate(&pfactStart));
   CHECK_HIP_ERROR(hipEventCreate(&pfactStop));
+  CHECK_HIP_ERROR(hipEventCreate(&panelCopy));
 
   /* Create a rocBLAS handle */
   CHECK_ROCBLAS_ERROR(rocblas_create_handle(&handle));
@@ -138,6 +140,7 @@ void HPL_FreeGPU() {
 
   CHECK_HIP_ERROR(hipEventDestroy(pfactStart));
   CHECK_HIP_ERROR(hipEventDestroy(pfactStop));
+  CHECK_HIP_ERROR(hipEventDestroy(panelCopy));
 
   CHECK_HIP_ERROR(hipStreamDestroy(dataStream));
   CHECK_HIP_ERROR(hipStreamDestroy(computeStream));

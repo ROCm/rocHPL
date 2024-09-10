@@ -117,4 +117,5 @@ void HPL_pdpanel_SendToDevice(HPL_T_panel* PANEL) {
       }
     }
   }
+  CHECK_HIP_ERROR(hipEventRecord(panelCopy, computeStream));
 }
