@@ -84,6 +84,13 @@ typedef struct HPL_S_panel {
   unsigned int       max_iwork_size;       /* largest size of IWORK space */
   unsigned int       max_fwork_size;       /* largest size of fWORK space */
   unsigned int       free_work_now;        /* should we deallocate */
+
+  int*     loc_workspace;
+  double*  max_workspace;
+  double*  dev_workspace;
+  int32_t* host_flag;
+  double*  host_workspace;
+  int32_t* locks;
 } HPL_T_panel;
 
 /*

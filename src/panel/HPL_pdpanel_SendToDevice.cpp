@@ -94,7 +94,7 @@ void HPL_pdpanel_SendToDevice(HPL_T_panel* PANEL) {
   if(PANEL->grid->mycol == PANEL->pcol) {
     if(PANEL->grid->npcol > 1) { // L2 is its own array
       if(PANEL->grid->myrow == PANEL->prow) {
-        if((PANEL->mp - jb) > 0)
+        if((PANEL->mp - jb) > 0) {
           CHECK_HIP_ERROR(hipMemcpy2DAsync(PANEL->L2,
                                            PANEL->ldl2 * sizeof(double),
                                            Mptr(PANEL->A, jb, -jb, PANEL->lda),
@@ -102,7 +102,8 @@ void HPL_pdpanel_SendToDevice(HPL_T_panel* PANEL) {
                                            (PANEL->mp - jb) * sizeof(double),
                                            jb,
                                            hipMemcpyDeviceToDevice,
-                                           dataStream));
+                                           computeStream));
+        }
       } else {
         if((PANEL->mp) > 0)
           CHECK_HIP_ERROR(hipMemcpy2DAsync(PANEL->L2,
@@ -112,7 +113,7 @@ void HPL_pdpanel_SendToDevice(HPL_T_panel* PANEL) {
                                            PANEL->mp * sizeof(double),
                                            jb,
                                            hipMemcpyDeviceToDevice,
-                                           dataStream));
+                                           computeStream));
       }
     }
   }

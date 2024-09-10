@@ -47,6 +47,14 @@ int HPL_pdpanel_free(HPL_T_panel* PANEL) {
 
     PANEL->max_iwork_size = 0;
     PANEL->max_fwork_size = 0;
+
+    CHECK_HIP_ERROR(hipFree(PANEL->loc_workspace));
+    CHECK_HIP_ERROR(hipFree(PANEL->max_workspace));
+    CHECK_HIP_ERROR(hipFree(PANEL->dev_workspace));
+    CHECK_HIP_ERROR(hipFree(PANEL->locks));
+
+    CHECK_HIP_ERROR(hipHostFree(PANEL->host_flag));
+    CHECK_HIP_ERROR(hipHostFree(PANEL->host_workspace));
   }
 
   return (HPL_SUCCESS);

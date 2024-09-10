@@ -196,23 +196,22 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
       HPL_pdlaswp_end(panel[0], HPL_LOOK_AHEAD);
       HPL_pdupdate(panel[0], HPL_LOOK_AHEAD);
 
+      CHECK_HIP_ERROR(hipStreamSynchronize(computeStream));
+
       // when the look ahead update is finished, copy back the current panel
-      CHECK_HIP_ERROR(
-          hipStreamWaitEvent(dataStream, update[HPL_LOOK_AHEAD], 0));
-      HPL_pdpanel_SendToHost(panel[1]);
+      // CHECK_HIP_ERROR(
+      //     hipStreamWaitEvent(dataStream, update[HPL_LOOK_AHEAD], 0));
+      // HPL_pdpanel_SendToHost(panel[1]);
 
-      /* Queue up finishing the second section */
-      HPL_pdlaswp_end(panel[0], HPL_UPD_2);
-      HPL_pdupdate(panel[0], HPL_UPD_2);
 
-#ifdef HPL_DETAILED_TIMING
-      HPL_ptimer(HPL_TIMING_UPDATE);
-      CHECK_HIP_ERROR(hipEventSynchronize(update[HPL_LOOK_AHEAD]));
-      HPL_ptimer(HPL_TIMING_UPDATE);
-#endif
+// #ifdef HPL_DETAILED_TIMING
+//       HPL_ptimer(HPL_TIMING_UPDATE);
+//       CHECK_HIP_ERROR(hipEventSynchronize(update[HPL_LOOK_AHEAD]));
+//       HPL_ptimer(HPL_TIMING_UPDATE);
+// #endif
 
       // wait for the panel to arrive
-      HPL_pdpanel_Wait(panel[0]);
+      // HPL_pdpanel_Wait(panel[0]);
 
 #ifdef HPL_PROGRESS_REPORT
 #ifdef HPL_DETAILED_TIMING
@@ -232,13 +231,18 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
        * (N-i*NB)(NB^2-NB)*/
       HPL_pdfact(panel[1]); /* factor current panel */
 
+      /* Queue up finishing the second section */
+      HPL_pdlaswp_end(panel[0], HPL_UPD_2);
+      HPL_pdupdate(panel[0], HPL_UPD_2);
+
       // send the panel back to device before bcast
       HPL_pdpanel_SendToDevice(panel[1]);
-      HPL_pdpanel_Wait(panel[0]);
+      // HPL_pdpanel_Wait(panel[0]);
     } else {
       /* Queue up finishing the second section */
       HPL_pdlaswp_end(panel[0], HPL_UPD_2);
       HPL_pdupdate(panel[0], HPL_UPD_2);
+
     }
 
     /* broadcast current panel */
@@ -351,9 +355,12 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
       }
 
       if(panel[0]->nu0) {
+        float pfactTime = 0.;
+        CHECK_HIP_ERROR(hipEventElapsedTime(&pfactTime, pfactStart, pfactStop));
+
         printf("   %9.3e   |  %9.3e |  %9.3e |",
                HPL_ptimer_getStep(HPL_TIMING_COPY),
-               HPL_ptimer_getStep(HPL_TIMING_RPFACT),
+               static_cast<double>(pfactTime)/1000,
                HPL_ptimer_getStep(HPL_TIMING_MXSWP));
       } else {
         printf("               |            |            |");
@@ -381,6 +388,7 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
     panel[0] = panel[1];
     panel[1] = p;
   }
+
   /*
    * Clean-up: Finish updates - release panels and panel list
    */

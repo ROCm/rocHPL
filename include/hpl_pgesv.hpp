@@ -92,6 +92,7 @@ typedef struct HPL_S_pmat {
 extern hipEvent_t swapStartEvent[HPL_N_UPD], update[HPL_N_UPD];
 extern hipEvent_t swapUCopyEvent[HPL_N_UPD], swapWCopyEvent[HPL_N_UPD];
 extern hipEvent_t dgemmStart[HPL_N_UPD], dgemmStop[HPL_N_UPD];
+extern hipEvent_t pfactStart, pfactStop;
 
 /*
  * ---------------------------------------------------------------------

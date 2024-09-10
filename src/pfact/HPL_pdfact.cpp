@@ -80,22 +80,32 @@ void HPL_pdfact(HPL_T_panel* PANEL) {
 
   roctxRangePush("pdfact");
 
-#pragma omp parallel shared(max_value, max_index)
-  {
-    const int thread_rank = omp_get_thread_num();
-    const int thread_size = omp_get_num_threads();
-    assert(thread_size <= 128);
+// #pragma omp parallel shared(max_value, max_index)
+//   {
+//     const int thread_rank = omp_get_thread_num();
+//     const int thread_size = omp_get_num_threads();
+//     assert(thread_size <= 128);
 
-    PANEL->algo->rffun(PANEL,
-                       PANEL->mp,
-                       jb,
-                       0,
-                       PANEL->fWORK,
-                       thread_rank,
-                       thread_size,
-                       max_value,
-                       max_index);
-  }
+//     PANEL->algo->rffun(PANEL,
+//                        PANEL->mp,
+//                        jb,
+//                        0,
+//                        PANEL->fWORK,
+//                        thread_rank,
+//                        thread_size,
+//                        max_value,
+//                        max_index);
+//   }
+
+  hipStream_t stream;
+  CHECK_ROCBLAS_ERROR(rocblas_get_stream(handle, &stream));
+
+  CHECK_HIP_ERROR(hipEventRecord(pfactStart, stream));
+
+  HPL_pdfact_device(PANEL);
+
+  CHECK_HIP_ERROR(hipEventRecord(pfactStop, stream));
+
 
   roctxRangePop();
 

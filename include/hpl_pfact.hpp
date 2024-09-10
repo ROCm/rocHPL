@@ -192,6 +192,7 @@ void HPL_pdrpanrlT(HPL_T_panel*,
                    int*);
 
 void HPL_pdfact(HPL_T_panel*);
+void HPL_pdfact_device(HPL_T_panel* PANEL);
 
 #endif
 /*

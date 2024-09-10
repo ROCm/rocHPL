@@ -106,27 +106,27 @@ int HPL_pdmatgen(HPL_T_test* TEST,
     return HPL_FAILURE;
   }
 
-  #pragma omp parallel
-  {
-    /*First touch*/
-    const int thread_rank = omp_get_thread_num();
-    const int thread_size = omp_get_num_threads();
-    assert(thread_size <= max_nthreads);
+  // #pragma omp parallel
+  // {
+  //   /*First touch*/
+  //   const int thread_rank = omp_get_thread_num();
+  //   const int thread_size = omp_get_num_threads();
+  //   assert(thread_size <= max_nthreads);
 
-    for(int nb = 0; nb < mat->nq; nb += NB) {
-      for(int mb = nb; mb < mat->ld; mb += NB) {
-        if(((mb-nb)/NB) % thread_size == thread_rank) {
-          const int nn = std::min(NB, mat->nq - nb);
-          const int mm = std::min(NB, mat->ld - mb);
-          for(int j = 0; j < nn; ++j) {
-            for(int i = 0; i < mm; i+=512) { // 4KB pages
-              mat->A[(i + mb) + static_cast<size_t>(mat->ld) * (j + nb)] = 0.0;
-            }
-          }
-        }
-      }
-    }
-  }
+  //   for(int nb = 0; nb < mat->nq; nb += NB) {
+  //     for(int mb = nb; mb < mat->ld; mb += NB) {
+  //       if(((mb-nb)/NB) % thread_size == thread_rank) {
+  //         const int nn = std::min(NB, mat->nq - nb);
+  //         const int mm = std::min(NB, mat->ld - mb);
+  //         for(int j = 0; j < nn; ++j) {
+  //           for(int i = 0; i < mm; i+=512) { // 4KB pages
+  //             mat->A[(i + mb) + static_cast<size_t>(mat->ld) * (j + nb)] = 0.0;
+  //           }
+  //         }
+  //       }
+  //     }
+  //   }
+  // }
 
 
   int Anp;
@@ -160,6 +160,8 @@ int HPL_WarmUp(HPL_T_test* TEST,
                HPL_T_grid* GRID,
                HPL_T_palg* ALGO,
                HPL_T_pmat* mat) {
+
+  return HPL_SUCCESS;
 
   double target_warmup_time = 30.0; //seconds
 
