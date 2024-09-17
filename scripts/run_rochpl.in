@@ -373,8 +373,8 @@ elif [[ "$platform" == "ParryPeak" || "$platform" == "Sh54p" || "$platform" == "
       # GPU2 cores="48-71"
       # GPU3 cores="72-95"
 
-      root_cores=(0 24 48 72)
-      num_cores=24
+      root_cores=(1 25 49 73)
+      num_cores=21
 
     elif [[ $(rocm-smi | grep TPX) ]]; then
 
@@ -422,14 +422,22 @@ elif [[ "$platform" == "ParryPeak" || "$platform" == "Sh54p" || "$platform" == "
     # First omp place is the root core
     omp_places="{$root_core}"
 
-    # First assign the socket
-    for i in $(seq $((root_core+1)) $((root_core+num_cores-1)))
+    # First assign the socket skipping core 0 in each CCD
+    for i in $(seq $((root_core+1)) $((root_core+6)))
+    do
+      omp_places+=",{$i}"
+    done
+    for i in $(seq $((root_core+8)) $((root_core+8+6)))
+    do
+      omp_places+=",{$i}"
+    done
+    for i in $(seq $((root_core+16)) $((root_core+16+6)))
     do
       omp_places+=",{$i}"
     done
     omp_num_threads=$num_cores
 
-    places="{$root_core-$((root_core+num_cores-1))}"
+    places="{$root_core-$((root_core+6)),$((root_core+8))-$((root_core+8+6)),$((root_core+16))-$((root_core+16+6))}"
 
     # Loop through unassigned sockets
     #NC: turning this off for now. Only assign cores on one socket per proc
