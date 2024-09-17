@@ -493,7 +493,7 @@ void HPL_pdinfo(int          ARGC,
      * Recursive stopping criterium (>=1) (NBM)
      */
     *NBMS  = 1;
-    NBM[0] = 4;
+    NBM[0] = 16;
     /*
      * Number of panels in recursion (>=2) (NDV)
      */
