@@ -125,7 +125,6 @@ void HPL_pdmxswp(HPL_T_panel* PANEL,
   /*
    * Save the global pivot index in pivot array
    */
-  printf("Pivot %d, loc %d\n", JJ, static_cast<int>(WORK[2]));
   (PANEL->ipiv)[JJ] = (int)WORK[2];
 #ifdef HPL_DETAILED_TIMING
   HPL_ptimer(HPL_TIMING_MXSWP);
