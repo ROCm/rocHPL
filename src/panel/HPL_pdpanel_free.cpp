@@ -54,7 +54,7 @@ int HPL_pdpanel_free(HPL_T_panel* PANEL) {
     CHECK_HIP_ERROR(hipFree(PANEL->locks));
 
     CHECK_HIP_ERROR(hipHostFree(PANEL->host_flag));
-    CHECK_HIP_ERROR(hipHostFree(PANEL->host_workspace));
+    CHECK_HIP_ERROR(hipFree(PANEL->host_workspace));
   }
 
   return (HPL_SUCCESS);

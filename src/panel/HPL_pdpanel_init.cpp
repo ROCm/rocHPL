@@ -424,21 +424,21 @@ void HPL_pdpanel_init(HPL_T_grid*  GRID,
   }
 
   if (PANEL->loc_workspace == NULL) {
-    size_t numbytes = sizeof(int) * ((mp + nb-1)/nb);
+    size_t numbytes = sizeof(int) * ((mp + nb-1)/nb + 1);
     if(deviceMalloc(GRID, (void**)&(PANEL->loc_workspace), numbytes) != HPL_SUCCESS) {
       HPL_pabort(__LINE__,
                  "HPL_pdpanel_init",
                  "Memory allocation failed for pdfact scratch workspace.");
     }
 
-    numbytes = sizeof(double) * ((mp + nb-1)/nb);
+    numbytes = sizeof(double) * ((mp + nb-1)/nb + 1);
     if(deviceMalloc(GRID, (void**)&(PANEL->max_workspace), numbytes) != HPL_SUCCESS) {
       HPL_pabort(__LINE__,
                  "HPL_pdpanel_init",
                  "Memory allocation failed for pdfact scratch workspace.");
     }
 
-    numbytes = sizeof(double) * (4 + 2*nb + nb * ((mp + nb-1)/nb) );
+    numbytes = sizeof(double) * (nb * ((mp + nb-1)/nb + 1) );
     if(deviceMalloc(GRID, (void**)&(PANEL->dev_workspace), numbytes) != HPL_SUCCESS) {
       HPL_pabort(__LINE__,
                  "HPL_pdpanel_init",
@@ -446,7 +446,7 @@ void HPL_pdpanel_init(HPL_T_grid*  GRID,
     }
 
 
-    if(deviceMalloc(GRID, (void**)&(PANEL->locks), 2* sizeof(int32_t)) != HPL_SUCCESS) {
+    if(deviceMalloc(GRID, (void**)&(PANEL->locks), 2* sizeof(uint32_t)) != HPL_SUCCESS) {
       HPL_pabort(__LINE__,
                  "HPL_pdpanel_init",
                  "Memory allocation failed for pdfact scratch workspace.");
@@ -462,7 +462,7 @@ void HPL_pdpanel_init(HPL_T_grid*  GRID,
     PANEL->host_flag[0] = 0;
 
     numbytes = sizeof(double) * 2 * (4 + 2 * nb);
-    if(hostMalloc(GRID, (void**)&(PANEL->host_workspace), numbytes) != HPL_SUCCESS) {
+    if(deviceMalloc(GRID, (void**)&(PANEL->host_workspace), numbytes) != HPL_SUCCESS) {
       HPL_pabort(__LINE__,
                  "HPL_pdpanel_init",
                  "Memory allocation failed for pdfact scratch workspace.");

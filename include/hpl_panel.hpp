@@ -90,7 +90,7 @@ typedef struct HPL_S_panel {
   double*  dev_workspace;
   int32_t* host_flag;
   double*  host_workspace;
-  int32_t* locks;
+  uint32_t* locks;
 } HPL_T_panel;
 
 /*
