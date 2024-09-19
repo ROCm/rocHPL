@@ -18,10 +18,7 @@
 #include <hip/hip_runtime.h>
 
 
-__host__ __device__ constexpr int prev_pow2(const int N) {
-  return (1 << (31 - __builtin_clz(N-1)));
-}
-
+template<int BLOCKSIZE>
 __device__ inline void maxloc_block_reduce(int &loc,
                                            double &max,
                                            int *s_loc,
@@ -33,18 +30,7 @@ __device__ inline void maxloc_block_reduce(int &loc,
 
   __syncthreads();
 
-  int active = prev_pow2(blockDim.x);
-
-  if (t<active && t+active < blockDim.x) {
-    if (std::abs(s_max[t+active]) > std::abs(s_max[t])) {
-      s_max[t] = s_max[t+active];
-      s_loc[t] = s_loc[t+active];
-    }
-  }
-  __syncthreads();
-
-  active >>= 1;
-  for (; active>0;active>>=1) {
+  for (int active=BLOCKSIZE/2; active>0;active>>=1) {
     if (t<active) {
       if (std::abs(s_max[t+active]) > std::abs(s_max[t])) {
         s_max[t] = s_max[t+active];
@@ -112,6 +98,8 @@ private:
   int grid_size;
 };
 
+template<int BLOCKSIZE>
+__launch_bounds__(BLOCKSIZE)
 __global__ void pdfact(const int M,
                        const int NB,
                        const int JB,
@@ -130,13 +118,10 @@ __global__ void pdfact(const int M,
 
   const int t = threadIdx.x;
   const int block = blockIdx.x;
-  const int m = t + NB * block;
 
-  extern __shared__ char s_array[];
-
-  double *s_Amax = reinterpret_cast<double*>(&s_array[0]);
-  double *s_max  = reinterpret_cast<double*>(&s_array[blockDim.x * sizeof(double)]);
-  int    *s_loc  = reinterpret_cast<int*>(&s_array[2 * blockDim.x * sizeof(double)]);
+  __shared__ double s_Amax[BLOCKSIZE];
+  __shared__ double s_max[BLOCKSIZE];
+  __shared__ int    s_loc[BLOCKSIZE];
 
   int    loc;
   double max;
@@ -160,33 +145,35 @@ __global__ void pdfact(const int M,
       // Complete maxloc reduction
       loc=-1;
       max=0.;
-      for (int id=t+1;id<gridDim.x;id+=blockDim.x) {
+      for (int id=t+1;id<gridDim.x;id+=BLOCKSIZE) {
         const double r_max = __hip_atomic_load(&max_workspace[id], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
         if (std::abs(r_max) > std::abs(max)) {
           loc = id;
           max = r_max;
         }
       }
-      maxloc_block_reduce(loc, max, s_loc, s_max);
+      maxloc_block_reduce<BLOCKSIZE>(loc, max, s_loc, s_max);
       loc = s_loc[0]; //block number where local max row resides
       max = s_max[0];
 
-      //Read local candidate pivot row out of agent work buffer
-      if (curr) {
-        acur = __hip_atomic_load(&candidate_rows[t],            __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-      }
-      amax = __hip_atomic_load(&candidate_rows[t + loc * NB], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-      loc = __hip_atomic_load(&loc_workspace[loc], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+      if (t<NB) {
+        //Read local candidate pivot row out of agent work buffer
+        if (curr) {
+          acur = __hip_atomic_load(&candidate_rows[t],            __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+        }
+        amax = __hip_atomic_load(&candidate_rows[t + loc * NB], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
 
-      //write row into host swap space
-      __hip_atomic_store(&host_workspace[4+t],    amax, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-      if (curr) {
-        __hip_atomic_store(&host_workspace[4+t+NB], acur, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+        //write row into host swap space
+        __hip_atomic_store(&host_workspace[4+t],    amax, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+        if (curr) {
+          __hip_atomic_store(&host_workspace[4+t+NB], acur, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+        }
       }
       __syncthreads();
 
       if(t==0) {
         //Write row number and max val to header
+        loc = __hip_atomic_load(&loc_workspace[loc], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
         __hip_atomic_store(&host_workspace[0], static_cast<double>(max), __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
         __hip_atomic_store(&host_workspace[1], static_cast<double>(loc), __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
 
@@ -199,12 +186,14 @@ __global__ void pdfact(const int M,
       }
       __syncthreads();
 
-      L1[t + jj*NB] = __hip_atomic_load(&host_workspace[4+t],    __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+      if (t<NB) {
+        L1[t + jj*NB] = __hip_atomic_load(&host_workspace[4+t],    __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+      }
     }
 
   } else {
 
-    const int m = t + NB * (block-1);
+    const int m = t + BLOCKSIZE * (block-1);
     const bool bcurr = (block==1) && curr;
 
     //pointer to current column
@@ -217,16 +206,18 @@ __global__ void pdfact(const int M,
       loc = m;
       max = An[m];
     }
-    maxloc_block_reduce(loc, max, s_loc, s_max);
+    maxloc_block_reduce<BLOCKSIZE>(loc, max, s_loc, s_max);
     loc = s_loc[0];
     max = s_max[0];
 
-    // Write out to workspace
-    __hip_atomic_store(&candidate_rows[t + block * NB], A[loc + t * LDA], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+    if (t<NB) {
+      // Write out to workspace
+      __hip_atomic_store(&candidate_rows[t + block * NB], A[loc + t * LDA], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
 
-    //write top row to workspace
-    if (bcurr) {
-      __hip_atomic_store(&candidate_rows[t], A[0 + t*LDA], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+      //write top row to workspace
+      if (bcurr) {
+        __hip_atomic_store(&candidate_rows[t], A[0 + t*LDA], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+      }
     }
     __syncthreads();
 
@@ -248,17 +239,21 @@ __global__ void pdfact(const int M,
       const double gmax = __hip_atomic_load(&host_workspace[0], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
       const int srcloc = static_cast<int>(__hip_atomic_load(&host_workspace[1], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM));
       const int srcrow = static_cast<int>(__hip_atomic_load(&host_workspace[3], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM));
-      const int srcBlock = srcloc/NB + 1;
-
-      //Read in the Amax row to LDS
-      const double acmax = __hip_atomic_load(&Amax[t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-      s_Amax[t] = acmax;
+      const int srcBlock = srcloc/BLOCKSIZE + 1;
 
       //shift down a row
       if (bcurr) ii++;
 
-      if (myrow == srcrow && block == srcBlock) {
-        A[srcloc + t*LDA] = __hip_atomic_load(&Acur[t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+      double acmax;
+      if (t<NB) {
+        //Read in the Amax row to LDS
+        acmax = __hip_atomic_load(&Amax[t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+        s_Amax[t] = acmax;
+
+
+        if (myrow == srcrow && block == srcBlock) {
+          A[srcloc + t*LDA] = __hip_atomic_load(&Acur[t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+        }
       }
       __syncthreads();
 
@@ -278,31 +273,34 @@ __global__ void pdfact(const int M,
       }
 
       // Each block does partial reduction to find pivot row
-      maxloc_block_reduce(loc, max, s_loc, s_max);
+      maxloc_block_reduce<BLOCKSIZE>(loc, max, s_loc, s_max);
       loc = s_loc[0];
       max = s_max[0];
 
-      amax = A[loc + t * LDA];
+      if (t<NB) {
+        amax = A[loc + t * LDA];
 
-      if (block==1 && curr) {
-        acur = A[ii + t * LDA];
-      }
-
-      //rank-1 update of swapped rows
-      if (jj+JJ < t && t < JB + JJ) {
-        amax -= acmax * An[loc];
-
-        if (block==1 && curr) {
-          acur -= acmax * An[ii];
+        if (bcurr) {
+          acur = A[ii + t * LDA];
         }
-      }
 
-      // Write out to workspace
-      __hip_atomic_store(&candidate_rows[t + block * NB], amax, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+        //rank-1 update of swapped rows
+        if (jj+JJ < t && t < JB + JJ) {
+          amax -= acmax * An[loc];
 
-      // Write top row
-      if (bcurr) {
-        __hip_atomic_store(&candidate_rows[t], acur,  __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+          if (bcurr) {
+            acur -= acmax * An[ii];
+          }
+        }
+
+
+        // Write out to workspace
+        __hip_atomic_store(&candidate_rows[t + block * NB], amax, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+
+        // Write top row
+        if (bcurr) {
+          __hip_atomic_store(&candidate_rows[t], acur,  __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+        }
       }
       __syncthreads();
 
@@ -333,12 +331,12 @@ __global__ void pdfact(const int M,
     const double gmax = __hip_atomic_load(&host_workspace[0], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
     const int srcloc = static_cast<int>(__hip_atomic_load(&host_workspace[1], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM));
     const int srcrow = static_cast<int>(__hip_atomic_load(&host_workspace[3], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM));
-    const int srcBlock = srcloc/NB + 1;
+    const int srcBlock = srcloc/BLOCKSIZE + 1;
 
     //shift down a row
     if (bcurr) ii++;
 
-    if (myrow == srcrow && block == srcBlock) {
+    if (myrow == srcrow && block == srcBlock && t<NB) {
       A[srcloc + t*LDA] = __hip_atomic_load(&Acur[t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
     }
     __syncthreads();
@@ -382,25 +380,27 @@ void HPL_pdpanrlT_device(HPL_T_panel* PANEL,
   HPL_ptimer(HPL_TIMING_PFACT);
 #endif
 
+  constexpr int BLOCKSIZE=1024;
+
   if (M>0) {
-    pdfact<<<dim3((M+PANEL->jb-1)/PANEL->jb + 1),
-             dim3(PANEL->jb),
-             (2 * sizeof(double) + sizeof(int)) * PANEL->jb,
-             stream>>>(M,
-                       PANEL->jb,
-                       N,
-                       A + ii,
-                       lda,
-                       curr,
-                       myrow,
-                       jj,
-                       L1 + jj * PANEL->jb,
-                       PANEL->loc_workspace,
-                       PANEL->max_workspace,
-                       PANEL->dev_workspace,
-                       PANEL->host_flag,
-                       PANEL->host_workspace,
-                       PANEL->locks);
+    pdfact<BLOCKSIZE><<<dim3((M+BLOCKSIZE-1)/BLOCKSIZE + 1),
+                        dim3(BLOCKSIZE),
+                        0,
+                        stream>>>(M,
+                                  PANEL->jb,
+                                  N,
+                                  A + ii,
+                                  lda,
+                                  curr,
+                                  myrow,
+                                  jj,
+                                  L1 + jj * PANEL->jb,
+                                  PANEL->loc_workspace,
+                                  PANEL->max_workspace,
+                                  PANEL->dev_workspace,
+                                  PANEL->host_flag,
+                                  PANEL->host_workspace,
+                                  PANEL->locks);
   }
 
   int NB      = PANEL->nb;
