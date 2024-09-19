@@ -93,7 +93,7 @@ p=-1
 q=-1
 N=45312
 NB=384
-frac=0.6
+frac=0.3
 
 filename=HPL.dat
 inputfile=false
