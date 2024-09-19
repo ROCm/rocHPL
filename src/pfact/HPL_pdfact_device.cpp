@@ -169,16 +169,21 @@ __global__ void pdfact(const int M,
           __hip_atomic_store(&host_workspace[4+t+NB], acur, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
         }
       }
-      __syncthreads();
 
       if(t==0) {
         //Write row number and max val to header
         loc = __hip_atomic_load(&loc_workspace[loc], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
         __hip_atomic_store(&host_workspace[0], static_cast<double>(max), __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
         __hip_atomic_store(&host_workspace[1], static_cast<double>(loc), __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+      }
 
+      __builtin_amdgcn_fence(__ATOMIC_ACQUIRE, "workgroup");
+      __builtin_amdgcn_s_waitcnt(0);
+      __builtin_amdgcn_s_barrier();
+
+      if(t==0) {
         //Mark pivot row as found
-        __hip_atomic_store(host_flag, 1, __ATOMIC_RELEASE, __HIP_MEMORY_SCOPE_SYSTEM);
+        __hip_atomic_store(host_flag, 1, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
 
         //Wait for Host to unlock
         while (__hip_atomic_load(host_flag, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM) != 0) {}
@@ -219,15 +224,18 @@ __global__ void pdfact(const int M,
         __hip_atomic_store(&candidate_rows[t], A[0 + t*LDA], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
       }
     }
-    __syncthreads();
 
     if (t==0) {
       __hip_atomic_store(&loc_workspace[block], loc, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
       __hip_atomic_store(&max_workspace[block], max, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-
-      //Signal the first block that the workspace is populated and wait for swap to complete
-      barrier.arrive_and_wait();
     }
+
+    __builtin_amdgcn_fence(__ATOMIC_ACQUIRE, "workgroup");
+    __builtin_amdgcn_s_waitcnt(0);
+    __builtin_amdgcn_s_barrier();
+
+    //Signal the first block that the workspace is populated and wait for swap to complete
+    if (t==0) barrier.arrive_and_wait();
     __syncthreads();
 
     int ii = 0;
@@ -293,7 +301,6 @@ __global__ void pdfact(const int M,
           }
         }
 
-
         // Write out to workspace
         __hip_atomic_store(&candidate_rows[t + block * NB], amax, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
 
@@ -302,15 +309,18 @@ __global__ void pdfact(const int M,
           __hip_atomic_store(&candidate_rows[t], acur,  __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
         }
       }
-      __syncthreads();
 
       if (t==0) {
         __hip_atomic_store(&loc_workspace[block], loc, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
         __hip_atomic_store(&max_workspace[block], max, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-
-        //Signal the first block that the workspace is populated
-        barrier.arrive();
       }
+
+      __builtin_amdgcn_fence(__ATOMIC_ACQUIRE, "workgroup");
+      __builtin_amdgcn_s_waitcnt(0);
+      __builtin_amdgcn_s_barrier();
+
+      //Signal the first block that the workspace is populated
+      if (t==0) barrier.arrive();
 
       //Rank 1 update while the row is exchanged on the host
       if (ii <= t && m < M) {
