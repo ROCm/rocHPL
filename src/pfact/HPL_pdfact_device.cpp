@@ -366,8 +366,10 @@ void HPL_pdpanrlT_device(HPL_T_panel* PANEL,
   double *A, *L1;
   int     curr, ii, jj, lda;
 
-  A    = PANEL->A;
-  lda  = PANEL->lda;
+  HPL_T_pmat* mat = PANEL->pmat;
+
+  A    = PANEL->A0;
+  lda  = PANEL->lda0;
   L1   = PANEL->L1;
   curr = PANEL->grid->myrow == PANEL->prow ? 1 : 0;
 
@@ -405,25 +407,25 @@ void HPL_pdpanrlT_device(HPL_T_panel* PANEL,
                                   myrow,
                                   jj,
                                   L1 + jj * PANEL->jb,
-                                  PANEL->loc_workspace,
-                                  PANEL->max_workspace,
-                                  PANEL->dev_workspace,
-                                  PANEL->host_flag,
-                                  PANEL->host_workspace,
-                                  PANEL->locks);
+                                  mat->loc_workspace,
+                                  mat->max_workspace,
+                                  mat->dev_workspace,
+                                  mat->host_flag,
+                                  mat->host_workspace,
+                                  mat->locks);
   }
 
   int NB      = PANEL->nb;
   int icurrow = PANEL->prow;
 
   int cnt0 = 4 + 2 * PANEL->jb;
-  double *WORK = PANEL->host_workspace;
+  double *WORK = mat->host_workspace;
   double *Wwork = WORK + cnt0;
 
   for (int i = 0; i < N; i++) {
     if (M>0) {
       /*Wait for host_flag to update from GPU*/
-      while (__atomic_load_n(PANEL->host_flag, __ATOMIC_ACQUIRE) != 1) { }
+      while (__atomic_load_n(mat->host_flag, __ATOMIC_ACQUIRE) != 1) { }
     }
 
 #ifdef HPL_DETAILED_TIMING
@@ -458,7 +460,7 @@ void HPL_pdpanrlT_device(HPL_T_panel* PANEL,
 
     if (M>0) {
       /*Signal GPU*/
-      __atomic_store_n(PANEL->host_flag, 0, __ATOMIC_RELEASE);
+      __atomic_store_n(mat->host_flag, 0, __ATOMIC_RELEASE);
     }
   }
 
@@ -487,8 +489,8 @@ void HPL_pdrpanrlT_device(HPL_T_panel* PANEL,
   n       = N;
   nb = jb = ((((N + nbmin - 1) / nbmin) + nbdiv - 1) / nbdiv) * nbmin;
 
-  A     = PANEL->A;
-  lda   = PANEL->lda;
+  A     = PANEL->A0;
+  lda   = PANEL->lda0;
   L1    = PANEL->L1;
   n0    = PANEL->jb;
   L1ptr = L1 + ICOFF + ICOFF * n0;

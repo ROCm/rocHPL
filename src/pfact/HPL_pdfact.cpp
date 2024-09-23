@@ -90,7 +90,7 @@ void HPL_pdfact(HPL_T_panel* PANEL) {
 //                        PANEL->mp,
 //                        jb,
 //                        0,
-//                        PANEL->fWORK,
+//                        PANEL->pmat->host_workspace,
 //                        thread_rank,
 //                        thread_size,
 //                        max_value,

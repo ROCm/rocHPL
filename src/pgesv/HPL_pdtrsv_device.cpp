@@ -100,9 +100,9 @@ void HPL_pdtrsv(HPL_T_grid* GRID, HPL_T_pmat* AMAT) {
   A  = AMAT->A;
   XR = AMAT->X;
 
-  XC = AMAT->W;
+  XC = AMAT->W0;
 
-  W = AMAT->W + Anp;
+  W = AMAT->W0 + Anp;
 
   hipStream_t stream;
   CHECK_ROCBLAS_ERROR(rocblas_get_stream(handle, &stream));

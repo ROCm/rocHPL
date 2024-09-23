@@ -70,7 +70,7 @@ void HPL_dlocmax(HPL_T_panel* PANEL,
   int     kk, igindx, ilindx, myrow, nb, nprow;
 
   if(N > 0) {
-    A     = Mptr(PANEL->A, II, JJ, PANEL->lda);
+    A     = Mptr(PANEL->A0, II, JJ, PANEL->lda0);
     myrow = PANEL->grid->myrow;
     nprow = PANEL->grid->nprow;
     nb    = PANEL->nb;

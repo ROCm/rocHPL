@@ -108,8 +108,8 @@ void HPL_pdrpanllN(HPL_T_panel* PANEL,
   n       = N;
   nb = jb = ((((N + nbmin - 1) / nbmin) + nbdiv - 1) / nbdiv) * nbmin;
 
-  A     = PANEL->A;
-  lda   = PANEL->lda;
+  A     = PANEL->A0;
+  lda   = PANEL->lda0;
   L1    = PANEL->L1;
   n0    = PANEL->jb;
   L1ptr = Mptr(L1, ICOFF, ICOFF, n0);

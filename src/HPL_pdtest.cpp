@@ -100,7 +100,6 @@ void HPL_pdtest(HPL_T_test* TEST,
    * workspace is mp.
    */
   ierr = HPL_pdmatgen(TEST, GRID, ALGO, &mat, N, NB);
-
   if(ierr != HPL_SUCCESS) {
     (TEST->kskip)++;
     HPL_pdmatfree(&mat);
@@ -126,11 +125,13 @@ void HPL_pdtest(HPL_T_test* TEST,
    */
   HPL_ptimer_boot();
   (void)HPL_barrier(GRID->all_comm);
+  roctxRangePush("FOM Region");
   time(&current_time_start);
   HPL_ptimer(0);
   HPL_pdgesv(GRID, ALGO, &mat);
   HPL_ptimer(0);
   time(&current_time_end);
+  roctxRangePop();
 
   /*
    * Gather max of all CPU and WALL clock timings and print timing results

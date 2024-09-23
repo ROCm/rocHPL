@@ -33,30 +33,23 @@ typedef struct HPL_S_panel {
   struct HPL_S_palg* algo;  /* ptr to the algo parameters */
   struct HPL_S_pmat* pmat;  /* ptr to the local array info */
   double*            A;     /* ptr to trailing part of A */
-  double*            LWORK; /* L work space */
-  double*            UWORK; /* U work space */
-  double*            fWORK; /* pdfact work space */
+  double*            A0;    /* ptr to trailing part of A */
   double*            L2;    /* ptr to L */
   double*            L1;    /* ptr to jb x jb upper block of A */
-  double*            DINFO; /* ptr to replicated scalar info */
-  int*               ipiv;
-  int*               lindxA;
-  int*               lindxAU;
-  int*               lindxU;
-  int*               permU;
-  double*            U;  /* ptr to U */
-  double*            W;  /* ptr to W */
+  double*            U0; /* ptr to U */
   double*            U1; /* ptr to U1 */
-  double*            W1; /* ptr to W1 */
   double*            U2; /* ptr to U2 */
-  double*            W2; /* ptr to W2 */
+  int*               IWORK;      /* integer workspace for swapping */
+  int*               ipiv;
   int                nu0;
   int                nu1;
   int                nu2;
   int                ldu0;
   int                ldu1;
   int                ldu2;
-  int*               IWORK;      /* integer workspace for swapping */
+  int                lda0;       /* local leading dim of array A0 */
+  int                ldl2;       /* local leading dim of array L2 */
+  int                len;        /* length of the buffer to broadcast */
   void*              buffers[2]; /* buffers for panel bcast */
   int                counts[2];  /* counts for panel bcast */
   MPI_Datatype       dtypes[2];  /* data types for panel bcast */
@@ -76,21 +69,6 @@ typedef struct HPL_S_panel {
   int                prow;       /* proc. row owning 1st row of trail. A */
   int                pcol;       /* proc. col owning 1st col of trail. A */
   int                msgid;      /* message id for panel bcast */
-  int                ldl2;       /* local leading dim of array L2 */
-  int                len;        /* length of the buffer to broadcast */
-  unsigned int       max_pinned_work_size; /* largest size of pinned A space */
-  unsigned int       max_lwork_size;       /* largest size of WORK space */
-  unsigned int       max_uwork_size;       /* largest size of WORK space */
-  unsigned int       max_iwork_size;       /* largest size of IWORK space */
-  unsigned int       max_fwork_size;       /* largest size of fWORK space */
-  unsigned int       free_work_now;        /* should we deallocate */
-
-  int*     loc_workspace;
-  double*  max_workspace;
-  double*  dev_workspace;
-  int32_t* host_flag;
-  double*  host_workspace;
-  uint32_t* locks;
 } HPL_T_panel;
 
 /*
@@ -100,16 +78,14 @@ typedef struct HPL_S_panel {
  */
 #include "hpl_pgesv.hpp"
 
-void HPL_pdpanel_new(HPL_T_grid*,
-                     HPL_T_palg*,
-                     const int,
-                     const int,
-                     const int,
-                     HPL_T_pmat*,
-                     const int,
-                     const int,
-                     const int,
-                     HPL_T_panel**);
+typedef struct HPL_S_test HPL_T_test;
+
+int HPL_pdpanel_new(HPL_T_test*,
+                    HPL_T_grid*,
+                    HPL_T_palg*,
+                    HPL_T_pmat*,
+                    HPL_T_panel*,
+                    size_t&);
 
 void HPL_pdpanel_init(HPL_T_grid*,
                       HPL_T_palg*,
@@ -122,10 +98,10 @@ void HPL_pdpanel_init(HPL_T_grid*,
                       const int,
                       HPL_T_panel*);
 
-int  HPL_pdpanel_disp(HPL_T_panel**);
 int  HPL_pdpanel_free(HPL_T_panel*);
 void HPL_pdpanel_SendToHost(HPL_T_panel*);
 void HPL_pdpanel_SendToDevice(HPL_T_panel*);
+void HPL_pdpanel_swapids(HPL_T_panel* PANEL);
 void HPL_pdpanel_Wait(HPL_T_panel* PANEL);
 int  HPL_pdpanel_bcast(HPL_T_panel*);
 #endif

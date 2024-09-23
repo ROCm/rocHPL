@@ -33,28 +33,25 @@ int HPL_pdpanel_free(HPL_T_panel* PANEL) {
    * ---------------------------------------------------------------------
    */
 
-  if(PANEL->pmat->info == 0) PANEL->pmat->info = *(PANEL->DINFO);
-
-  if(PANEL->free_work_now == 1) {
-
-    if(PANEL->LWORK) CHECK_HIP_ERROR(hipFree(PANEL->LWORK));
-    if(PANEL->UWORK) CHECK_HIP_ERROR(hipFree(PANEL->UWORK));
-    PANEL->max_lwork_size = 0;
-    PANEL->max_uwork_size = 0;
-
-    if(PANEL->IWORK) CHECK_HIP_ERROR(hipFree(PANEL->IWORK));
-    if(PANEL->fWORK) CHECK_HIP_ERROR(hipFree(PANEL->fWORK));
-
-    PANEL->max_iwork_size = 0;
-    PANEL->max_fwork_size = 0;
-
-    CHECK_HIP_ERROR(hipFree(PANEL->loc_workspace));
-    CHECK_HIP_ERROR(hipFree(PANEL->max_workspace));
-    CHECK_HIP_ERROR(hipFree(PANEL->dev_workspace));
-    CHECK_HIP_ERROR(hipFree(PANEL->locks));
-
-    CHECK_HIP_ERROR(hipHostFree(PANEL->host_flag));
-    CHECK_HIP_ERROR(hipFree(PANEL->host_workspace));
+  if(PANEL->IWORK) {
+    CHECK_HIP_ERROR(hipFree(PANEL->IWORK));
+    PANEL->IWORK = nullptr;
+  }
+  if(PANEL->U2) {
+    CHECK_HIP_ERROR(hipFree(PANEL->U2));
+    PANEL->U2 = nullptr;
+  }
+  if(PANEL->U1) {
+    CHECK_HIP_ERROR(hipFree(PANEL->U1));
+    PANEL->U1 = nullptr;
+  }
+  if(PANEL->U0) {
+    CHECK_HIP_ERROR(hipFree(PANEL->U0));
+    PANEL->U0 = nullptr;
+  }
+  if(PANEL->A0) {
+    CHECK_HIP_ERROR(hipFree(PANEL->A0));
+    PANEL->A0 = nullptr;
   }
 
   return (HPL_SUCCESS);

@@ -39,7 +39,7 @@ void HPL_pdlaswp_start(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    */
   double *A, *U, *W;
   int *   ipID, *iplen, *ipcounts, *ipoffsets, *iwork,
-      *lindxU = NULL, *lindxA = NULL, *lindxAU, *permU, *permU_ex;
+      *lindxU = NULL, *lindxA = NULL, *lindxAU, *permU;
   int icurrow, *iflag, *ipA, *ipl, jb, k, lda, myrow, n, nprow, LDU, LDW;
 
   /* ..
@@ -51,10 +51,9 @@ void HPL_pdlaswp_start(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   /*
    * Retrieve parameters from the PANEL data structure
    */
+  HPL_T_pmat* mat = PANEL->pmat;
   nprow = PANEL->grid->nprow;
   myrow = PANEL->grid->myrow;
-  iflag = PANEL->IWORK;
-
   MPI_Comm comm = PANEL->grid->col_comm;
 
   // quick return if we're 1xQ
@@ -65,15 +64,15 @@ void HPL_pdlaswp_start(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   icurrow = PANEL->prow;
 
   if(UPD == HPL_LOOK_AHEAD) {
-    U   = PANEL->U;
-    W   = PANEL->W;
+    U   = PANEL->U0;
+    W   = mat->W0;
     LDU = PANEL->ldu0;
     LDW = PANEL->ldu0;
     n   = PANEL->nu0;
 
   } else if(UPD == HPL_UPD_1) {
     U   = PANEL->U1;
-    W   = PANEL->W1;
+    W   = mat->W1;
     LDU = PANEL->ldu1;
     LDW = PANEL->ldu1;
     n   = PANEL->nu1;
@@ -83,7 +82,7 @@ void HPL_pdlaswp_start(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
 
   } else if(UPD == HPL_UPD_2) {
     U   = PANEL->U2;
-    W   = PANEL->W2;
+    W   = mat->W2;
     LDU = PANEL->ldu2;
     LDW = PANEL->ldu2;
     n   = PANEL->nu2;
@@ -97,37 +96,19 @@ void HPL_pdlaswp_start(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    */
   if((n <= 0) || (jb <= 0)) return;
 
-  /*
-   * Compute ipID (if not already done for this panel). lindxA and lindxAU
-   * are of length at most 2*jb - iplen is of size nprow+1, ipmap, ipmapm1
-   * are of size nprow,  permU is of length jb, and  this function needs a
-   * workspace of size max( 2 * jb (plindx1), nprow+1(equil)):
-   * 1(iflag) + 1(ipl) + 1(ipA) + 9*jb + 3*nprow + 1 + MAX(2*jb,nprow+1)
-   * i.e. 4 + 9*jb + 3*nprow + max(2*jb, nprow+1);
-   */
+  permU    = PANEL->IWORK;
+  lindxU   = permU + jb;
+  lindxA   = lindxU + jb;
+  lindxAU  = lindxA + jb;
+
   k         = (int)((unsigned int)(jb) << 1);
-  ipl       = iflag + 1;
+  ipl       = lindxAU + jb;
   ipID      = ipl + 1;
   ipA       = ipID + ((unsigned int)(k) << 1);
   iplen     = ipA + 1;
   ipcounts  = iplen + nprow + 1;
   ipoffsets = ipcounts + nprow;
   iwork     = ipoffsets + nprow;
-
-  lindxU   = PANEL->lindxU;
-  lindxA   = PANEL->lindxA;
-  lindxAU  = PANEL->lindxAU;
-  permU    = PANEL->permU;
-  permU_ex = permU + jb;
-
-  if(*iflag == -1) /* no index arrays have been computed so far */
-  {
-    // compute spreading info
-    HPL_pipid(PANEL, ipl, ipID);
-    HPL_plindx(
-        PANEL, *ipl, ipID, ipA, lindxU, lindxAU, lindxA, iplen, permU, iwork);
-    *iflag = 1;
-  }
 
   /*
    * For i in [0..2*jb),  lindxA[i] is the offset in A of a row that ulti-
@@ -195,7 +176,7 @@ void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    */
   double *A, *U, *W;
   int *   ipID, *iplen, *ipcounts, *ipoffsets, *iwork;
-  int *   lindxU = NULL, *lindxA = NULL, *lindxAU, *permU, *permU_ex;
+  int *   lindxU = NULL, *lindxA = NULL, *lindxAU, *permU;
   int     icurrow, *iflag, *ipA, *ipl, jb, k, lda, myrow, n, nprow, LDU, LDW;
 
   /* ..
@@ -207,10 +188,9 @@ void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   /*
    * Retrieve parameters from the PANEL data structure
    */
+  HPL_T_pmat* mat = PANEL->pmat;
   nprow = PANEL->grid->nprow;
   myrow = PANEL->grid->myrow;
-  iflag = PANEL->IWORK;
-
   MPI_Comm comm = PANEL->grid->col_comm;
 
   // quick return if we're 1xQ
@@ -221,15 +201,15 @@ void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   icurrow = PANEL->prow;
 
   if(UPD == HPL_LOOK_AHEAD) {
-    U   = PANEL->U;
-    W   = PANEL->W;
+    U   = PANEL->U0;
+    W   = mat->W0;
     LDU = PANEL->ldu0;
     LDW = PANEL->ldu0;
     n   = PANEL->nu0;
 
   } else if(UPD == HPL_UPD_1) {
     U   = PANEL->U1;
-    W   = PANEL->W1;
+    W   = mat->W1;
     LDU = PANEL->ldu1;
     LDW = PANEL->ldu1;
     n   = PANEL->nu1;
@@ -239,7 +219,7 @@ void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
 
   } else if(UPD == HPL_UPD_2) {
     U   = PANEL->U2;
-    W   = PANEL->W2;
+    W   = mat->W2;
     LDU = PANEL->ldu2;
     LDW = PANEL->ldu2;
     n   = PANEL->nu2;
@@ -261,20 +241,19 @@ void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    * 1(iflag) + 1(ipl) + 1(ipA) + 9*jb + 3*nprow + 1 + MAX(2*jb,nprow+1)
    * i.e. 4 + 9*jb + 3*nprow + max(2*jb, nprow+1);
    */
+  permU    = PANEL->IWORK;
+  lindxU   = permU + jb;
+  lindxA   = lindxU + jb;
+  lindxAU  = lindxA + jb;
+
   k         = (int)((unsigned int)(jb) << 1);
-  ipl       = iflag + 1;
+  ipl       = lindxAU + jb;
   ipID      = ipl + 1;
   ipA       = ipID + ((unsigned int)(k) << 1);
   iplen     = ipA + 1;
   ipcounts  = iplen + nprow + 1;
   ipoffsets = ipcounts + nprow;
   iwork     = ipoffsets + nprow;
-
-  lindxA   = PANEL->lindxA;
-  lindxAU  = PANEL->lindxAU;
-  lindxU   = PANEL->lindxU;
-  permU    = PANEL->permU;
-  permU_ex = permU + jb;
 
   /* Set MPI message counts and offsets */
   ipcounts[0]  = (iplen[1] - iplen[0]) * LDU;
@@ -373,7 +352,7 @@ void HPL_pdlaswp_end(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    */
   double *A, *U, *W;
   int *   ipID, *iplen, *ipcounts, *ipoffsets, *iwork;
-  int *   lindxA = NULL, *lindxAU, *lindxU, *permU, *permU_ex;
+  int *   lindxA = NULL, *lindxAU, *lindxU, *permU;
   int     icurrow, *iflag, *ipA, *ipl, jb, k, lda, myrow, n, nprow, LDU, LDW;
 
   /* ..
@@ -387,24 +366,23 @@ void HPL_pdlaswp_end(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    */
   nprow = PANEL->grid->nprow;
   myrow = PANEL->grid->myrow;
-  iflag = PANEL->IWORK;
-
   MPI_Comm comm = PANEL->grid->col_comm;
+  HPL_T_pmat* mat = PANEL->pmat;
 
   A       = PANEL->A;
   lda     = PANEL->lda;
   icurrow = PANEL->prow;
 
   if(UPD == HPL_LOOK_AHEAD) {
-    U   = PANEL->U;
-    W   = PANEL->W;
+    U   = PANEL->U0;
+    W   = mat->W0;
     LDU = PANEL->ldu0;
     LDW = PANEL->ldu0;
     n   = PANEL->nu0;
 
   } else if(UPD == HPL_UPD_1) {
     U   = PANEL->U1;
-    W   = PANEL->W1;
+    W   = mat->W1;
     LDU = PANEL->ldu1;
     LDW = PANEL->ldu1;
     n   = PANEL->nu1;
@@ -414,7 +392,7 @@ void HPL_pdlaswp_end(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
 
   } else if(UPD == HPL_UPD_2) {
     U   = PANEL->U2;
-    W   = PANEL->W2;
+    W   = mat->W2;
     LDU = PANEL->ldu2;
     LDW = PANEL->ldu2;
     n   = PANEL->nu2;
@@ -428,35 +406,25 @@ void HPL_pdlaswp_end(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    */
   if((n <= 0) || (jb <= 0)) return;
 
+  permU    = PANEL->IWORK;
+  lindxU   = permU + jb;
+  lindxA   = lindxU + jb;
+  lindxAU  = lindxA + jb;
+
+  k         = (int)((unsigned int)(jb) << 1);
+  ipl       = lindxAU + jb;
+  ipID      = ipl + 1;
+  ipA       = ipID + ((unsigned int)(k) << 1);
+  iplen     = ipA + 1;
+  ipcounts  = iplen + nprow + 1;
+  ipoffsets = ipcounts + nprow;
+  iwork     = ipoffsets + nprow;
+
   // just local swaps if we're 1xQ
   if(nprow == 1) {
-    HPL_dlaswp00N(jb, n, A, lda, PANEL->ipiv);
+    HPL_dlaswp00N(jb, n, A, lda, permU);
     return;
   }
-
-  /*
-   * Compute ipID (if not already done for this panel). lindxA and lindxAU
-   * are of length at most 2*jb - iplen is of size nprow+1, ipmap, ipmapm1
-   * are of size nprow,  permU is of length jb, and  this function needs a
-   * workspace of size max( 2 * jb (plindx1), nprow+1(equil)):
-   * 1(iflag) + 1(ipl) + 1(ipA) + 9*jb + 3*nprow + 1 + MAX(2*jb,nprow+1)
-   * i.e. 4 + 9*jb + 3*nprow + max(2*jb, nprow+1);
-   */
-  k     = (int)((unsigned int)(jb) << 1);
-  ipl   = iflag + 1;
-  ipID  = ipl + 1;
-  ipA   = ipID + ((unsigned int)(k) << 1);
-  iplen = ipA + 1;
-
-  lindxA  = PANEL->lindxA;
-  lindxAU = PANEL->lindxAU;
-  permU   = PANEL->permU;
-
-  lindxA   = PANEL->lindxA;
-  lindxAU  = PANEL->lindxAU;
-  lindxU   = PANEL->lindxU;
-  permU    = PANEL->permU;
-  permU_ex = permU + jb;
 
   /*
    * For i in [0..2*jb),  lindxA[i] is the offset in A of a row that ulti-

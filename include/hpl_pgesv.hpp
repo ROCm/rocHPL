@@ -86,7 +86,22 @@ typedef struct HPL_S_pmat {
   int     mp;   /* local number of rows */
   int     nq;   /* local number of columns */
   int     info; /* computational flag */
-  double* W;
+
+  HPL_T_panel panel[2];
+
+  //row swapping workspaces
+  double* W0;
+  double* W1;
+  double* W2;
+
+  //pfact workspaces
+  int*     loc_workspace;
+  double*  max_workspace;
+  double*  dev_workspace;
+  uint32_t* locks;
+  int32_t* host_flag;
+  double*  host_workspace;
+
 } HPL_T_pmat;
 
 extern hipEvent_t swapStartEvent[HPL_N_UPD], update[HPL_N_UPD];

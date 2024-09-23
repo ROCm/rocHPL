@@ -49,7 +49,7 @@ void HPL_pdupdateNT(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   Aptr = PANEL->A;
 
   if(UPD == HPL_LOOK_AHEAD) {
-    Uptr = PANEL->U;
+    Uptr = PANEL->U0;
     LDU  = PANEL->ldu0;
     n    = Mmin(PANEL->nu0, n);
   } else if(UPD == HPL_UPD_1) {
