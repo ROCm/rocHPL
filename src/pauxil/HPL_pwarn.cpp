@@ -66,24 +66,43 @@ void HPL_pwarn(FILE*       STREAM,
   /*
    * Display an error message
    */
-  if(LINE <= 0)
-    HPL_fprintf(STREAM,
-                "%s %s %d, %s %s:\n>>> %s <<<\n\n",
-                "HPL ERROR",
-                "from process #",
-                rank,
-                "in function",
-                SRNAME,
-                cline);
-  else
-    HPL_fprintf(STREAM,
-                "%s %s %d, %s %d %s %s:\n>>> %s <<<\n\n",
-                "HPL ERROR",
-                "from process #",
-                rank,
-                "on line",
-                LINE,
-                "of function",
-                SRNAME,
-                cline);
+  if (rank == 0) {
+    if(LINE <= 0) {
+      HPL_fprintf(STREAM,
+                  "%s %s %d, %s %s:\n>>> %s <<<\n\n",
+                  "HPL ERROR",
+                  "from process #",
+                  rank,
+                  "in function",
+                  SRNAME,
+                  cline);
+
+      HPL_fprintf(stderr,
+                  "%s %s %s:\n>>> %s <<<\n\n",
+                  "HPL ERROR",
+                  "in function",
+                  SRNAME,
+                  cline);
+    } else {
+      HPL_fprintf(STREAM,
+                  "%s %s %d, %s %d %s %s:\n>>> %s <<<\n\n",
+                  "HPL ERROR",
+                  "from process #",
+                  rank,
+                  "on line",
+                  LINE,
+                  "of function",
+                  SRNAME,
+                  cline);
+
+      HPL_fprintf(stderr,
+                  "%s %s %d %s %s:\n>>> %s <<<\n\n",
+                  "HPL ERROR",
+                  "on line",
+                  LINE,
+                  "of function",
+                  SRNAME,
+                  cline);
+    }
+  }
 }
