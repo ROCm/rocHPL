@@ -369,12 +369,15 @@ int HPL_WarmUp(HPL_T_test* TEST,
   HPL_pdpanel_init(GRID, ALGO, N, N + 1, Mmin(N, NB), mat, 0, 0, MSGID_BEGIN_FACT, p0);
   HPL_pdpanel_init(GRID, ALGO, N, N + 1, Mmin(N, NB), mat, 0, 0, MSGID_BEGIN_FACT, p1);
 
+  int mm = Mmin(p0->mp, p0->jb);
+  int nn = Mmin(p0->nq, p0->jb);
+
   // Fill the matrix with values
   HPL_pdrandmat(GRID, N, N + 1, NB, mat->A, mat->ld, HPL_ISEED);
 
   // Do a pfact on all columns
-  HPL_dlacpy_gpu(p0->mp,
-                 p0->jb,
+  HPL_dlacpy_gpu(mm,
+                 nn,
                  p0->A,
                  p0->lda,
                  p0->A0,
@@ -382,12 +385,13 @@ int HPL_WarmUp(HPL_T_test* TEST,
 
   p0->pcol = p0->grid->mycol;
   HPL_pdfact(p0);
+  p0->A -= p0->jb * static_cast<size_t>(p0->lda);
 
-  HPL_dlatcpy_gpu(Mmin(p0->mp, p0->jb),
-                  p0->jb,
+  HPL_dlatcpy_gpu(mm,
+                  nn,
                   p0->L1,
                   p0->jb,
-                  Mptr(p0->A, 0, -p0->jb, p0->lda),
+                  p0->A,
                   p0->lda);
 
   //Broadcast to register with MPI
@@ -395,27 +399,27 @@ int HPL_WarmUp(HPL_T_test* TEST,
   HPL_pdpanel_bcast(p0);
   HPL_pdpanel_swapids(p0);
 
-  p0->nu0 = Mmin(p0->nq, p0->jb);
+  p0->nu0 = nn;
+  p0->ldu0 = nn;
   HPL_pdlaswp_start(p0, HPL_LOOK_AHEAD);
   HPL_pdlaswp_exchange(p0, HPL_LOOK_AHEAD);
   HPL_pdlaswp_end(p0, HPL_LOOK_AHEAD);
+  HPL_pdupdate(p0, HPL_LOOK_AHEAD);
   p0->nu0 = 0;
 
   HPL_pdlaswp_start(p0, HPL_UPD_1);
   HPL_pdlaswp_exchange(p0, HPL_UPD_1);
   HPL_pdlaswp_end(p0, HPL_UPD_1);
+  HPL_pdupdate(p0, HPL_UPD_1);
 
   HPL_pdlaswp_start(p0, HPL_UPD_2);
   HPL_pdlaswp_exchange(p0, HPL_UPD_2);
   HPL_pdlaswp_end(p0, HPL_UPD_2);
-
-  HPL_pdupdate(p0, HPL_LOOK_AHEAD);
-  HPL_pdupdate(p0, HPL_UPD_1);
   HPL_pdupdate(p0, HPL_UPD_2);
 
   // Do a pfact on all columns
-  HPL_dlacpy_gpu(p1->mp,
-                 p1->jb,
+  HPL_dlacpy_gpu(mm,
+                 nn,
                  p1->A,
                  p1->lda,
                  p1->A0,
@@ -423,12 +427,13 @@ int HPL_WarmUp(HPL_T_test* TEST,
 
   p1->pcol = p1->grid->mycol;
   HPL_pdfact(p1);
+  p1->A -= p1->jb * static_cast<size_t>(p1->lda);
 
-  HPL_dlatcpy_gpu(Mmin(p1->mp, p1->jb),
-                  p1->jb,
+  HPL_dlatcpy_gpu(mm,
+                  nn,
                   p1->L1,
                   p1->jb,
-                  Mptr(p1->A, 0, -p1->jb, p1->lda),
+                  p1->A,
                   p1->lda);
 
   //Broadcast to register with MPI
@@ -436,22 +441,22 @@ int HPL_WarmUp(HPL_T_test* TEST,
   HPL_pdpanel_bcast(p1);
   HPL_pdpanel_swapids(p1);
 
-  p1->nu0 = Mmin(p1->nq, p1->jb);
+  p1->nu0 = nn;
+  p1->ldu0 = nn;
   HPL_pdlaswp_start(p1, HPL_LOOK_AHEAD);
   HPL_pdlaswp_exchange(p1, HPL_LOOK_AHEAD);
   HPL_pdlaswp_end(p1, HPL_LOOK_AHEAD);
+  HPL_pdupdate(p1, HPL_LOOK_AHEAD);
   p1->nu0 = 0;
 
   HPL_pdlaswp_start(p1, HPL_UPD_1);
   HPL_pdlaswp_exchange(p1, HPL_UPD_1);
   HPL_pdlaswp_end(p1, HPL_UPD_1);
+  HPL_pdupdate(p1, HPL_UPD_1);
 
   HPL_pdlaswp_start(p1, HPL_UPD_2);
   HPL_pdlaswp_exchange(p1, HPL_UPD_2);
   HPL_pdlaswp_end(p1, HPL_UPD_2);
-
-  HPL_pdupdate(p1, HPL_LOOK_AHEAD);
-  HPL_pdupdate(p1, HPL_UPD_1);
   HPL_pdupdate(p1, HPL_UPD_2);
 
   HPL_pdtrsv(GRID, mat);
