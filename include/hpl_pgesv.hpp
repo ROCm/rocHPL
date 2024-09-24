@@ -58,7 +58,14 @@ typedef enum {
   HPL_N_UPD = 3
 } HPL_T_UPD;
 
-typedef void (*HPL_T_UPD_FUN)(HPL_T_panel*, const HPL_T_UPD);
+typedef void (*HPL_T_UPD_FUN)(HPL_T_panel*,
+                              const int,
+                              double*,
+                              const int,
+                              double*,
+                              const int,
+                              const hipEvent_t&,
+                              const hipEvent_t&);
 
 typedef struct HPL_S_palg {
   HPL_T_TOP     btopo; /* row broadcast topology */
@@ -177,8 +184,23 @@ void HPL_pdlaswp_end(HPL_T_panel*,
                      double*,
                      const int);
 
-void HPL_pdupdateNT(HPL_T_panel*, const HPL_T_UPD);
-void HPL_pdupdateTT(HPL_T_panel*, const HPL_T_UPD);
+void HPL_pdupdateNT(HPL_T_panel*,
+                    const int,
+                    double*,
+                    const int,
+                    double*,
+                    const int,
+                    const hipEvent_t&,
+                    const hipEvent_t&);
+void HPL_pdupdateTT(HPL_T_panel*,
+                    const int,
+                    double*,
+                    const int,
+                    double*,
+                    const int,
+                    const hipEvent_t&,
+                    const hipEvent_t&);
+
 void HPL_pdgesv(HPL_T_grid*, HPL_T_palg*, HPL_T_pmat*);
 void HPL_pdtrsv(HPL_T_grid*, HPL_T_pmat*);
 

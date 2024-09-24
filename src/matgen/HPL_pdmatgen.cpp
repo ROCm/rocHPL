@@ -434,7 +434,14 @@ void HPL_WarmUp(HPL_T_test* TEST,
                   p0->ldu0,
                   p0->A,
                   p0->lda);
-  HPL_pdupdate(p0, HPL_LOOK_AHEAD);
+  HPL_pdupdate(p0,
+               p0->nu0,
+               p0->U0,
+               p0->ldu0,
+               p0->A,
+               p0->lda,
+               dgemmStart[HPL_LOOK_AHEAD],
+               dgemmStop[HPL_LOOK_AHEAD]);
   p0->nu0 = 0;
 
   HPL_pdlaswp_start(p0,
@@ -463,7 +470,14 @@ void HPL_WarmUp(HPL_T_test* TEST,
                   p0->ldu1,
                   Mptr(p0->A, 0, p0->nu0, p0->lda),
                   p0->lda);
-  HPL_pdupdate(p0, HPL_UPD_1);
+  HPL_pdupdate(p0,
+               p0->nu1,
+               p0->U1,
+               p0->ldu1,
+               Mptr(p0->A, 0, p0->nu0, p0->lda),
+               p0->lda,
+               dgemmStart[HPL_UPD_1],
+               dgemmStop[HPL_UPD_1]);
 
   HPL_pdlaswp_start(p0,
                     p0->nu2,
@@ -491,7 +505,14 @@ void HPL_WarmUp(HPL_T_test* TEST,
                   p0->ldu2,
                   Mptr(p0->A, 0, p0->nu0 + p0->nu1, p0->lda),
                   p0->lda);
-  HPL_pdupdate(p0, HPL_UPD_2);
+  HPL_pdupdate(p0,
+               p0->nu2,
+               p0->U2,
+               p0->ldu2,
+               Mptr(p0->A, 0, p0->nu0 + p0->nu1, p0->lda),
+               p0->lda,
+               dgemmStart[HPL_UPD_2],
+               dgemmStop[HPL_UPD_2]);
 
   // Do a pfact on all columns
   HPL_dlacpy_gpu(mm,
@@ -547,7 +568,14 @@ void HPL_WarmUp(HPL_T_test* TEST,
                   p1->ldu0,
                   p1->A,
                   p1->lda);
-  HPL_pdupdate(p1, HPL_LOOK_AHEAD);
+  HPL_pdupdate(p1,
+               p1->nu0,
+               p1->U0,
+               p1->ldu0,
+               p1->A,
+               p1->lda,
+               dgemmStart[HPL_LOOK_AHEAD],
+               dgemmStop[HPL_LOOK_AHEAD]);
   p1->nu0 = 0;
 
   HPL_pdlaswp_start(p1,
@@ -576,7 +604,14 @@ void HPL_WarmUp(HPL_T_test* TEST,
                   p1->ldu1,
                   Mptr(p1->A, 0, p1->nu0, p1->lda),
                   p1->lda);
-  HPL_pdupdate(p1, HPL_UPD_1);
+  HPL_pdupdate(p1,
+               p1->nu1,
+               p1->U1,
+               p1->ldu1,
+               Mptr(p1->A, 0, p1->nu0, p1->lda),
+               p1->lda,
+               dgemmStart[HPL_UPD_1],
+               dgemmStop[HPL_UPD_1]);
 
   HPL_pdlaswp_start(p1,
                     p1->nu2,
@@ -604,7 +639,14 @@ void HPL_WarmUp(HPL_T_test* TEST,
                   p1->ldu2,
                   Mptr(p1->A, 0, p1->nu0 + p1->nu1, p1->lda),
                   p1->lda);
-  HPL_pdupdate(p1, HPL_UPD_2);
+  HPL_pdupdate(p1,
+               p1->nu2,
+               p1->U2,
+               p1->ldu2,
+               Mptr(p1->A, 0, p1->nu0 + p1->nu1, p1->lda),
+               p1->lda,
+               dgemmStart[HPL_UPD_2],
+               dgemmStop[HPL_UPD_2]);
 
   HPL_pdtrsv(GRID, mat);
 }

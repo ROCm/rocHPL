@@ -255,7 +255,14 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
                       curr->A,
                       curr->lda);
 
-      HPL_pdupdate(curr, HPL_LOOK_AHEAD);
+      HPL_pdupdate(curr,
+                   curr->nu0,
+                   curr->U0,
+                   curr->ldu0,
+                   curr->A,
+                   curr->lda,
+                   dgemmStart[HPL_LOOK_AHEAD],
+                   dgemmStop[HPL_LOOK_AHEAD]);
 
       HPL_dlacpy_gpu(next->mp,
                      next->jb,
@@ -288,7 +295,14 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
                     Mptr(curr->A, 0, curr->nu0 + curr->nu1, curr->lda),
                     curr->lda);
 
-    HPL_pdupdate(curr, HPL_UPD_2);
+    HPL_pdupdate(curr,
+                 curr->nu2,
+                 curr->U2,
+                 curr->ldu2,
+                 Mptr(curr->A, 0, curr->nu0 + curr->nu1, curr->lda),
+                 curr->lda,
+                 dgemmStart[HPL_UPD_2],
+                 dgemmStop[HPL_UPD_2]);
 
     if(mycol == icurcol) {
       CHECK_HIP_ERROR(hipEventSynchronize(pfactStop));
@@ -332,7 +346,15 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
                     curr->ldu1,
                     Mptr(curr->A, 0, curr->nu0, curr->lda),
                     curr->lda);
-    HPL_pdupdate(curr, HPL_UPD_1);
+
+    HPL_pdupdate(curr,
+                 curr->nu1,
+                 curr->U1,
+                 curr->ldu1,
+                 Mptr(curr->A, 0, curr->nu0, curr->lda),
+                 curr->lda,
+                 dgemmStart[HPL_UPD_1],
+                 dgemmStop[HPL_UPD_1]);
 
     if(mycol == icurcol) {
       jj += jb;
@@ -524,7 +546,14 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
                   curr->ldu0,
                   curr->A,
                   curr->lda);
-  HPL_pdupdate(curr, HPL_LOOK_AHEAD);
+  HPL_pdupdate(curr,
+               curr->nu0,
+               curr->U0,
+               curr->ldu0,
+               curr->A,
+               curr->lda,
+               dgemmStart[HPL_LOOK_AHEAD],
+               dgemmStop[HPL_LOOK_AHEAD]);
 
   HPL_pdlaswp_end(curr,
                   curr->nu2,
@@ -534,7 +563,14 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
                   curr->ldu2,
                   Mptr(curr->A, 0, curr->nu0 + curr->nu1, curr->lda),
                   curr->lda);
-  HPL_pdupdate(curr, HPL_UPD_2);
+  HPL_pdupdate(curr,
+               curr->nu2,
+               curr->U2,
+               curr->ldu2,
+               Mptr(curr->A, 0, curr->nu0 + curr->nu1, curr->lda),
+               curr->lda,
+               dgemmStart[HPL_UPD_2],
+               dgemmStop[HPL_UPD_2]);
 
 #ifdef HPL_DETAILED_TIMING
   HPL_ptimer(HPL_TIMING_UPDATE);

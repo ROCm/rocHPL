@@ -16,7 +16,14 @@
 
 #include "hpl.hpp"
 
-void HPL_pdupdateNT(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
+void HPL_pdupdateNT(HPL_T_panel* PANEL,
+                    const int N,
+                    double*   U,
+                    const int LDU,
+                    double*   A,
+                    const int LDA,
+                    const hipEvent_t& gemmStart,
+                    const hipEvent_t& gemmStop) {
   /*
    * Purpose
    * =======
@@ -34,53 +41,24 @@ void HPL_pdupdateNT(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    * ---------------------------------------------------------------------
    */
 
-  double *Aptr, *L1ptr, *L2ptr, *Uptr, *dpiv;
-  int*    dipiv;
-
-  int curr, i, jb, lda, ldl2, LDU, mp, n, nb;
+  /*
+   * There is nothing to update, enforce the panel broadcast.
+   */
+  const int jb   = PANEL->jb;
+  if((N <= 0) || (jb <= 0)) { return; }
 
   /* ..
    * .. Executable Statements ..
    */
-  nb   = PANEL->nb;
-  jb   = PANEL->jb;
-  n    = PANEL->nq;
-  lda  = PANEL->lda;
-  Aptr = PANEL->A;
-
-  if(UPD == HPL_LOOK_AHEAD) {
-    Uptr = PANEL->U0;
-    LDU  = PANEL->ldu0;
-    n    = Mmin(PANEL->nu0, n);
-  } else if(UPD == HPL_UPD_1) {
-    Uptr = PANEL->U1;
-    LDU  = PANEL->ldu1;
-    n    = Mmin(PANEL->nu1, n);
-    // we call the row swap start before the first section is updated
-    //  so shift the pointers
-    Aptr = Mptr(Aptr, 0, PANEL->nu0, lda);
-  } else if(UPD == HPL_UPD_2) {
-    Uptr = PANEL->U2;
-    LDU  = PANEL->ldu2;
-    n    = Mmin(PANEL->nu2, n);
-    // we call the row swap start before the first section is updated
-    //  so shift the pointers
-    Aptr = Mptr(Aptr, 0, PANEL->nu0 + PANEL->nu1, lda);
-  }
-
-  /*
-   * There is nothing to update, enforce the panel broadcast.
-   */
-  if((n <= 0) || (jb <= 0)) { return; }
-
   hipStream_t stream;
   CHECK_ROCBLAS_ERROR(rocblas_get_stream(handle, &stream));
 
-  curr  = (PANEL->grid->myrow == PANEL->prow ? 1 : 0);
-  L2ptr = PANEL->L2;
-  L1ptr = PANEL->L1;
-  ldl2  = PANEL->ldl2;
-  mp    = PANEL->mp - (curr != 0 ? jb : 0);
+  const double* L2 = PANEL->L2;
+  const double* L1 = PANEL->L1;
+
+  const int curr = (PANEL->grid->myrow == PANEL->prow ? 1 : 0);
+  const int ldl2 = PANEL->ldl2;
+  const int mp   = PANEL->mp - (curr != 0 ? jb : 0);
 
   const double one  = 1.0;
   const double mone = -1.0;
@@ -98,14 +76,14 @@ void HPL_pdupdateNT(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
                                       rocblas_operation_none,
                                       rocblas_diagonal_unit,
                                       jb,
-                                      n,
+                                      N,
                                       &one,
-                                      L1ptr,
+                                      L1,
                                       jb,
-                                      Aptr,
-                                      lda));
+                                      A,
+                                      LDA));
 
-    HPL_dlatcpy_gpu(n, jb, Aptr, lda, Uptr, LDU);
+    HPL_dlatcpy_gpu(N, jb, A, LDA, U, LDU);
   } else {
     /*
      * Compute redundantly row block of U and update trailing submatrix
@@ -115,12 +93,12 @@ void HPL_pdupdateNT(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
                                       rocblas_fill_lower,
                                       rocblas_operation_transpose,
                                       rocblas_diagonal_unit,
-                                      n,
+                                      N,
                                       jb,
                                       &one,
-                                      L1ptr,
+                                      L1,
                                       jb,
-                                      Uptr,
+                                      U,
                                       LDU));
   }
 
@@ -128,42 +106,40 @@ void HPL_pdupdateNT(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    * Queue finishing the update
    */
   if(curr != 0) {
-    CHECK_HIP_ERROR(hipEventRecord(dgemmStart[UPD], stream));
+    CHECK_HIP_ERROR(hipEventRecord(gemmStart, stream));
     CHECK_ROCBLAS_ERROR(rocblas_dgemm(handle,
                                       rocblas_operation_none,
                                       rocblas_operation_transpose,
                                       mp,
-                                      n,
+                                      N,
                                       jb,
                                       &mone,
-                                      L2ptr,
+                                      L2,
                                       ldl2,
-                                      Uptr,
+                                      U,
                                       LDU,
                                       &one,
-                                      Mptr(Aptr, jb, 0, lda),
-                                      lda));
-    CHECK_HIP_ERROR(hipEventRecord(dgemmStop[UPD], stream));
+                                      Mptr(A, jb, 0, LDA),
+                                      LDA));
+    CHECK_HIP_ERROR(hipEventRecord(gemmStop, stream));
 
-    if(PANEL->grid->nprow > 1) HPL_dlatcpy_gpu(jb, n, Uptr, LDU, Aptr, lda);
+    if(PANEL->grid->nprow > 1) HPL_dlatcpy_gpu(jb, N, U, LDU, A, LDA);
   } else {
-    CHECK_HIP_ERROR(hipEventRecord(dgemmStart[UPD], stream));
+    CHECK_HIP_ERROR(hipEventRecord(gemmStart, stream));
     CHECK_ROCBLAS_ERROR(rocblas_dgemm(handle,
                                       rocblas_operation_none,
                                       rocblas_operation_transpose,
                                       mp,
-                                      n,
+                                      N,
                                       jb,
                                       &mone,
-                                      L2ptr,
+                                      L2,
                                       ldl2,
-                                      Uptr,
+                                      U,
                                       LDU,
                                       &one,
-                                      Aptr,
-                                      lda));
-    CHECK_HIP_ERROR(hipEventRecord(dgemmStop[UPD], stream));
+                                      A,
+                                      LDA));
+    CHECK_HIP_ERROR(hipEventRecord(gemmStop, stream));
   }
-
-  CHECK_HIP_ERROR(hipEventRecord(update[UPD], stream));
 }
