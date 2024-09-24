@@ -152,7 +152,7 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   if(deviceMalloc(GRID, (void**)&(mat->A), numbytes, info) != HPL_SUCCESS) {
     HPL_pwarn(TEST->outfp,
               __LINE__,
-              "HPL_pdgenerate",
+              "HPL_pdmatgen",
               "[%d,%d] Device memory allocation failed for A and b. Requested %g GiBs total. Test Skiped.",
               info[1],
               info[2],
@@ -178,7 +178,7 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   if(deviceMalloc(GRID, (void**)&(mat->W0), numbytes, info) != HPL_SUCCESS) {
     HPL_pwarn(TEST->outfp,
               __LINE__,
-              "HPL_pdgenerate",
+              "HPL_pdmatgen",
               "[%d,%d] Device memory allocation failed for W0 workspace. Requested %g GiBs total. Test Skiped.",
               info[1],
               info[2],
@@ -200,7 +200,7 @@ int HPL_pdmatgen(HPL_T_test* TEST,
     if(deviceMalloc(GRID, (void**)&(mat->W1), numbytes, info) != HPL_SUCCESS) {
       HPL_pwarn(TEST->outfp,
                 __LINE__,
-                "HPL_pdgenerate",
+                "HPL_pdmatgen",
                 "[%d,%d] Device memory allocation failed for W1 workspace. Requested %g GiBs total. Test Skiped.",
                 info[1],
                 info[2],
@@ -217,7 +217,7 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   if(deviceMalloc(GRID, (void**)&(mat->W2), numbytes, info) != HPL_SUCCESS) {
     HPL_pwarn(TEST->outfp,
               __LINE__,
-              "HPL_pdgenerate",
+              "HPL_pdmatgen",
               "[%d,%d] Device memory allocation failed for W2 workspace. Requested %g GiBs total. Test Skiped.",
               info[1],
               info[2],
@@ -232,7 +232,7 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   if(deviceMalloc(GRID, (void**)&(mat->X), numbytes, info) != HPL_SUCCESS) {
     HPL_pwarn(TEST->outfp,
               __LINE__,
-              "HPL_pdgenerate",
+              "HPL_pdmatgen",
               "[%d,%d] Device memory allocation failed for X. Requested %g GiBs total. Test Skiped.",
               info[1],
               info[2],
@@ -247,7 +247,7 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   if(deviceMalloc(GRID, (void**)&(mat->loc_workspace), numbytes, info) != HPL_SUCCESS) {
     HPL_pwarn(TEST->outfp,
               __LINE__,
-              "HPL_pdgenerate",
+              "HPL_pdmatgen",
               "[%d,%d] Device memory allocation failed for pfact workspace. Requested %g GiBs total. Test Skiped.",
               info[1],
               info[2],
@@ -260,7 +260,7 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   if(deviceMalloc(GRID, (void**)&(mat->max_workspace), numbytes, info) != HPL_SUCCESS) {
     HPL_pwarn(TEST->outfp,
               __LINE__,
-              "HPL_pdgenerate",
+              "HPL_pdmatgen",
               "[%d,%d] Device memory allocation failed for pfact workspace. Requested %g GiBs total. Test Skiped.",
               info[1],
               info[2],
@@ -273,7 +273,7 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   if(deviceMalloc(GRID, (void**)&(mat->dev_workspace), numbytes, info) != HPL_SUCCESS) {
     HPL_pwarn(TEST->outfp,
               __LINE__,
-              "HPL_pdgenerate",
+              "HPL_pdmatgen",
               "[%d,%d] Device memory allocation failed for pfact workspace. Requested %g GiBs total. Test Skiped.",
               info[1],
               info[2],
@@ -286,7 +286,7 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   if(deviceMalloc(GRID, (void**)&(mat->locks), numbytes, info) != HPL_SUCCESS) {
     HPL_pwarn(TEST->outfp,
               __LINE__,
-              "HPL_pdgenerate",
+              "HPL_pdmatgen",
               "[%d,%d] Device memory allocation failed for pfact workspace. Requested %g GiBs total. Test Skiped.",
               info[1],
               info[2],
@@ -302,7 +302,7 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   if(deviceMalloc(GRID, (void**)&(mat->host_workspace), numbytes, info) != HPL_SUCCESS) {
     HPL_pwarn(TEST->outfp,
               __LINE__,
-              "HPL_pdgenerate",
+              "HPL_pdmatgen",
               "[%d,%d] Device memory allocation failed for pfact workspace. Requested %g GiBs total. Test Skiped.",
               info[1],
               info[2],
@@ -313,7 +313,7 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   if(hostMalloc(GRID, (void**)&(mat->host_flag), sizeof(int32_t), info) != HPL_SUCCESS) {
     HPL_pwarn(TEST->outfp,
               __LINE__,
-              "HPL_pdgenerate",
+              "HPL_pdmatgen",
               "[%d,%d] Host memory allocation failed for pfact workspace. Test Skiped.",
               info[1],
               info[2]);
@@ -353,10 +353,10 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   return HPL_SUCCESS;
 }
 
-int HPL_WarmUp(HPL_T_test* TEST,
-               HPL_T_grid* GRID,
-               HPL_T_palg* ALGO,
-               HPL_T_pmat* mat) {
+void HPL_WarmUp(HPL_T_test* TEST,
+                HPL_T_grid* GRID,
+                HPL_T_palg* ALGO,
+                HPL_T_pmat* mat) {
 
   int N = mat->n;
   int NB = mat->nb;
@@ -371,6 +371,11 @@ int HPL_WarmUp(HPL_T_test* TEST,
 
   int mm = Mmin(p0->mp, p0->jb);
   int nn = Mmin(p0->nq, p0->jb);
+
+  // swapping workspaces
+  double *W0 = mat->W0;
+  double *W1 = mat->W1;
+  double *W2 = mat->W2;
 
   // Fill the matrix with values
   HPL_pdrandmat(GRID, N, N + 1, NB, mat->A, mat->ld, HPL_ISEED);
@@ -394,6 +399,8 @@ int HPL_WarmUp(HPL_T_test* TEST,
                   p0->A,
                   p0->lda);
 
+  CHECK_HIP_ERROR(hipEventSynchronize(pfactStop));
+
   //Broadcast to register with MPI
   p0->pcol = 0;
   HPL_pdpanel_bcast(p0);
@@ -401,20 +408,89 @@ int HPL_WarmUp(HPL_T_test* TEST,
 
   p0->nu0 = nn;
   p0->ldu0 = nn;
-  HPL_pdlaswp_start(p0, HPL_LOOK_AHEAD);
-  HPL_pdlaswp_exchange(p0, HPL_LOOK_AHEAD);
-  HPL_pdlaswp_end(p0, HPL_LOOK_AHEAD);
+  HPL_pdlaswp_start(p0,
+                    p0->nu0,
+                    p0->U0,
+                    p0->ldu0,
+                    W0,
+                    p0->ldu0,
+                    p0->A,
+                    p0->lda,
+                    swapStartEvent[HPL_LOOK_AHEAD]);
+  HPL_pdlaswp_exchange(p0,
+                       p0->nu0,
+                       p0->U0,
+                       p0->ldu0,
+                       W0,
+                       p0->ldu0,
+                       p0->A,
+                       p0->lda,
+                       swapStartEvent[HPL_LOOK_AHEAD]);
+  HPL_pdlaswp_end(p0,
+                  p0->nu0,
+                  p0->U0,
+                  p0->ldu0,
+                  W0,
+                  p0->ldu0,
+                  p0->A,
+                  p0->lda);
   HPL_pdupdate(p0, HPL_LOOK_AHEAD);
   p0->nu0 = 0;
 
-  HPL_pdlaswp_start(p0, HPL_UPD_1);
-  HPL_pdlaswp_exchange(p0, HPL_UPD_1);
-  HPL_pdlaswp_end(p0, HPL_UPD_1);
+  HPL_pdlaswp_start(p0,
+                    p0->nu1,
+                    p0->U1,
+                    p0->ldu1,
+                    W1,
+                    p0->ldu1,
+                    Mptr(p0->A, 0, p0->nu0, p0->lda),
+                    p0->lda,
+                    swapStartEvent[HPL_UPD_1]);
+  HPL_pdlaswp_exchange(p0,
+                       p0->nu1,
+                       p0->U1,
+                       p0->ldu1,
+                       W1,
+                       p0->ldu1,
+                       Mptr(p0->A, 0, p0->nu0, p0->lda),
+                       p0->lda,
+                       swapStartEvent[HPL_UPD_1]);
+  HPL_pdlaswp_end(p0,
+                  p0->nu1,
+                  p0->U1,
+                  p0->ldu1,
+                  W1,
+                  p0->ldu1,
+                  Mptr(p0->A, 0, p0->nu0, p0->lda),
+                  p0->lda);
   HPL_pdupdate(p0, HPL_UPD_1);
 
-  HPL_pdlaswp_start(p0, HPL_UPD_2);
-  HPL_pdlaswp_exchange(p0, HPL_UPD_2);
-  HPL_pdlaswp_end(p0, HPL_UPD_2);
+  HPL_pdlaswp_start(p0,
+                    p0->nu2,
+                    p0->U2,
+                    p0->ldu2,
+                    W2,
+                    p0->ldu2,
+                    Mptr(p0->A, 0, p0->nu0 + p0->nu1, p0->lda),
+                    p0->lda,
+                    swapStartEvent[HPL_UPD_2]);
+  HPL_pdlaswp_exchange(p0,
+                       p0->nu2,
+                       p0->U2,
+                       p0->ldu2,
+                       W2,
+                       p0->ldu2,
+                       Mptr(p0->A, 0, p0->nu0 + p0->nu1, p0->lda),
+                       p0->lda,
+                       swapStartEvent[HPL_UPD_2]);
+  HPL_pdlaswp_end(p0,
+                  p0->nu2,
+                  p0->U2,
+                  p0->ldu2,
+                  W2,
+                  p0->ldu2,
+                  Mptr(p0->A, 0, p0->nu0 + p0->nu1, p0->lda),
+                  p0->lda);
   HPL_pdupdate(p0, HPL_UPD_2);
 
   // Do a pfact on all columns
@@ -436,6 +512,8 @@ int HPL_WarmUp(HPL_T_test* TEST,
                   p1->A,
                   p1->lda);
 
+  CHECK_HIP_ERROR(hipEventSynchronize(pfactStop));
+
   //Broadcast to register with MPI
   p1->pcol = 0;
   HPL_pdpanel_bcast(p1);
@@ -443,25 +521,92 @@ int HPL_WarmUp(HPL_T_test* TEST,
 
   p1->nu0 = nn;
   p1->ldu0 = nn;
-  HPL_pdlaswp_start(p1, HPL_LOOK_AHEAD);
-  HPL_pdlaswp_exchange(p1, HPL_LOOK_AHEAD);
-  HPL_pdlaswp_end(p1, HPL_LOOK_AHEAD);
+  HPL_pdlaswp_start(p1,
+                    p1->nu0,
+                    p1->U0,
+                    p1->ldu0,
+                    W0,
+                    p1->ldu0,
+                    p1->A,
+                    p1->lda,
+                    swapStartEvent[HPL_LOOK_AHEAD]);
+  HPL_pdlaswp_exchange(p1,
+                       p1->nu0,
+                       p1->U0,
+                       p1->ldu0,
+                       W0,
+                       p1->ldu0,
+                       p1->A,
+                       p1->lda,
+                       swapStartEvent[HPL_LOOK_AHEAD]);
+  HPL_pdlaswp_end(p1,
+                  p1->nu0,
+                  p1->U0,
+                  p1->ldu0,
+                  W0,
+                  p1->ldu0,
+                  p1->A,
+                  p1->lda);
   HPL_pdupdate(p1, HPL_LOOK_AHEAD);
   p1->nu0 = 0;
 
-  HPL_pdlaswp_start(p1, HPL_UPD_1);
-  HPL_pdlaswp_exchange(p1, HPL_UPD_1);
-  HPL_pdlaswp_end(p1, HPL_UPD_1);
+  HPL_pdlaswp_start(p1,
+                    p1->nu1,
+                    p1->U1,
+                    p1->ldu1,
+                    W1,
+                    p1->ldu1,
+                    Mptr(p1->A, 0, p1->nu0, p1->lda),
+                    p1->lda,
+                    swapStartEvent[HPL_UPD_1]);
+  HPL_pdlaswp_exchange(p1,
+                       p1->nu1,
+                       p1->U1,
+                       p1->ldu1,
+                       W1,
+                       p1->ldu1,
+                       Mptr(p1->A, 0, p1->nu0, p1->lda),
+                       p1->lda,
+                       swapStartEvent[HPL_UPD_1]);
+  HPL_pdlaswp_end(p1,
+                  p1->nu1,
+                  p1->U1,
+                  p1->ldu1,
+                  W1,
+                  p1->ldu1,
+                  Mptr(p1->A, 0, p1->nu0, p1->lda),
+                  p1->lda);
   HPL_pdupdate(p1, HPL_UPD_1);
 
-  HPL_pdlaswp_start(p1, HPL_UPD_2);
-  HPL_pdlaswp_exchange(p1, HPL_UPD_2);
-  HPL_pdlaswp_end(p1, HPL_UPD_2);
+  HPL_pdlaswp_start(p1,
+                    p1->nu2,
+                    p1->U2,
+                    p1->ldu2,
+                    W2,
+                    p1->ldu2,
+                    Mptr(p1->A, 0, p1->nu0 + p1->nu1, p1->lda),
+                    p1->lda,
+                    swapStartEvent[HPL_UPD_2]);
+  HPL_pdlaswp_exchange(p1,
+                       p1->nu2,
+                       p1->U2,
+                       p1->ldu2,
+                       W2,
+                       p1->ldu2,
+                       Mptr(p1->A, 0, p1->nu0 + p1->nu1, p1->lda),
+                       p1->lda,
+                       swapStartEvent[HPL_UPD_2]);
+  HPL_pdlaswp_end(p1,
+                  p1->nu2,
+                  p1->U2,
+                  p1->ldu2,
+                  W2,
+                  p1->ldu2,
+                  Mptr(p1->A, 0, p1->nu0 + p1->nu1, p1->lda),
+                  p1->lda);
   HPL_pdupdate(p1, HPL_UPD_2);
 
   HPL_pdtrsv(GRID, mat);
-
-  return HPL_SUCCESS;
 }
 
 void HPL_pdmatfree(HPL_T_pmat* mat) {

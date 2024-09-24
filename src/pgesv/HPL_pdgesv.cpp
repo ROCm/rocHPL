@@ -63,6 +63,11 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
   N            = A->n;
   nb           = A->nb;
 
+  // swapping workspaces
+  double *W0 = A->W0;
+  double *W1 = A->W1;
+  double *W2 = A->W2;
+
   if(N <= 0) return;
 
 #ifdef HPL_PROGRESS_REPORT
@@ -116,6 +121,8 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
 
     HPL_pdfact(curr);
 
+    CHECK_HIP_ERROR(hipEventSynchronize(pfactStop));
+
     if (myrow == curr->prow) {
       HPL_dlatcpy_gpu(curr->jb,
                       curr->jb,
@@ -124,6 +131,7 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
                       Mptr(curr->A, 0, -curr->jb, curr->lda),
                       curr->lda);
     }
+
   }
 
   HPL_pdpanel_bcast(curr);
@@ -132,23 +140,62 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
   HPL_pdpanel_swapids(curr);
 
   // start Ubcast+row swapping for second part of A
-  HPL_pdlaswp_start(curr, HPL_UPD_2);
+  HPL_pdlaswp_start(curr,
+                    curr->nu2,
+                    curr->U2,
+                    curr->ldu2,
+                    W2,
+                    curr->ldu2,
+                    Mptr(curr->A, 0, curr->nu0 + curr->nu1, curr->lda),
+                    curr->lda,
+                    swapStartEvent[HPL_UPD_2]);
 
   if(mycol == icurcol) {
     // start Ubcast+row swapping for look ahead
-    HPL_pdlaswp_start(curr, HPL_LOOK_AHEAD);
+    HPL_pdlaswp_start(curr,
+                      curr->nu0,
+                      curr->U0,
+                      curr->ldu0,
+                      W0,
+                      curr->ldu0,
+                      curr->A,
+                      curr->lda,
+                      swapStartEvent[HPL_LOOK_AHEAD]);
   }
 
   // start Ubcast+row swapping for first part of A
-  HPL_pdlaswp_start(curr, HPL_UPD_1);
+  HPL_pdlaswp_start(curr,
+                    curr->nu1,
+                    curr->U1,
+                    curr->ldu1,
+                    W1,
+                    curr->ldu1,
+                    Mptr(curr->A, 0, curr->nu0, curr->lda),
+                    curr->lda,
+                    swapStartEvent[HPL_UPD_1]);
 
   // Ubcast+row swaps for second part of A
-  HPL_pdlaswp_exchange(curr, HPL_UPD_2);
+  HPL_pdlaswp_exchange(curr,
+                       curr->nu2,
+                       curr->U2,
+                       curr->ldu2,
+                       W2,
+                       curr->ldu2,
+                       Mptr(curr->A, 0, curr->nu0 + curr->nu1, curr->lda),
+                       curr->lda,
+                       swapStartEvent[HPL_UPD_2]);
 
   if(mycol == icurcol) {
     // Ubcast+row swaps for look ahead
-    // nn = HPL_numrocI(jb, j, nb, nb, mycol, 0, npcol);
-    HPL_pdlaswp_exchange(curr, HPL_LOOK_AHEAD);
+    HPL_pdlaswp_exchange(curr,
+                         curr->nu0,
+                         curr->U0,
+                         curr->ldu0,
+                         W0,
+                         curr->ldu0,
+                         curr->A,
+                         curr->lda,
+                         swapStartEvent[HPL_LOOK_AHEAD]);
   }
 
   double stepStart, stepEnd;
@@ -199,7 +246,15 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
 
     if(mycol == icurcol) {
       /* update look ahead */
-      HPL_pdlaswp_end(curr, HPL_LOOK_AHEAD);
+      HPL_pdlaswp_end(curr,
+                      curr->nu0,
+                      curr->U0,
+                      curr->ldu0,
+                      W0,
+                      curr->ldu0,
+                      curr->A,
+                      curr->lda);
+
       HPL_pdupdate(curr, HPL_LOOK_AHEAD);
 
       HPL_dlacpy_gpu(next->mp,
@@ -224,8 +279,20 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
     }
 
     /* Queue up finishing the second section */
-    HPL_pdlaswp_end(curr, HPL_UPD_2);
+    HPL_pdlaswp_end(curr,
+                    curr->nu2,
+                    curr->U2,
+                    curr->ldu2,
+                    W2,
+                    curr->ldu2,
+                    Mptr(curr->A, 0, curr->nu0 + curr->nu1, curr->lda),
+                    curr->lda);
+
     HPL_pdupdate(curr, HPL_UPD_2);
+
+    if(mycol == icurcol) {
+      CHECK_HIP_ERROR(hipEventSynchronize(pfactStop));
+    }
 
     /* broadcast current panel */
     HPL_pdpanel_bcast(next);
@@ -234,14 +301,37 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
     HPL_pdpanel_swapids(next);
 
     // start Ubcast+row swapping for second part of A
-    HPL_pdlaswp_start(next, HPL_UPD_2);
+    HPL_pdlaswp_start(next,
+                      next->nu2,
+                      next->U2,
+                      next->ldu2,
+                      W2,
+                      next->ldu2,
+                      Mptr(next->A, 0, next->nu0 + next->nu1, next->lda),
+                      next->lda,
+                      swapStartEvent[HPL_UPD_2]);
 
     // while the second section is updating, exchange the rows from the first
     // section
-    HPL_pdlaswp_exchange(curr, HPL_UPD_1);
+    HPL_pdlaswp_exchange(curr,
+                         curr->nu1,
+                         curr->U1,
+                         curr->ldu1,
+                         W1,
+                         curr->ldu1,
+                         Mptr(curr->A, 0, curr->nu0, curr->lda),
+                         curr->lda,
+                         swapStartEvent[HPL_UPD_1]);
 
     /* Queue up finishing the first section */
-    HPL_pdlaswp_end(curr, HPL_UPD_1);
+    HPL_pdlaswp_end(curr,
+                    curr->nu1,
+                    curr->U1,
+                    curr->ldu1,
+                    W1,
+                    curr->ldu1,
+                    Mptr(curr->A, 0, curr->nu0, curr->lda),
+                    curr->lda);
     HPL_pdupdate(curr, HPL_UPD_1);
 
     if(mycol == icurcol) {
@@ -254,19 +344,67 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
     if(mycol == icurcol) {
       // prep the row swaps for the next look ahead
       //  nn = HPL_numrocI(jb, j+nb, nb, nb, mycol, 0, npcol);
-      HPL_pdlaswp_start(next, HPL_LOOK_AHEAD);
+      HPL_pdlaswp_start(next,
+                        next->nu0,
+                        next->U0,
+                        next->ldu0,
+                        W0,
+                        next->ldu0,
+                        next->A,
+                        next->lda,
+                        swapStartEvent[HPL_LOOK_AHEAD]);
 
       // start Ubcast+row swapping for first part of A
-      HPL_pdlaswp_start(next, HPL_UPD_1);
+      HPL_pdlaswp_start(next,
+                        next->nu1,
+                        next->U1,
+                        next->ldu1,
+                        W1,
+                        next->ldu1,
+                        Mptr(next->A, 0, next->nu0, next->lda),
+                        next->lda,
+                        swapStartEvent[HPL_UPD_1]);
 
-      HPL_pdlaswp_exchange(next, HPL_UPD_2);
+      HPL_pdlaswp_exchange(next,
+                           next->nu2,
+                           next->U2,
+                           next->ldu2,
+                           W2,
+                           next->ldu2,
+                           Mptr(next->A, 0, next->nu0 + next->nu1, next->lda),
+                           next->lda,
+                           swapStartEvent[HPL_UPD_2]);
 
-      HPL_pdlaswp_exchange(next, HPL_LOOK_AHEAD);
+      HPL_pdlaswp_exchange(next,
+                           next->nu0,
+                           next->U0,
+                           next->ldu0,
+                           W0,
+                           next->ldu0,
+                           next->A,
+                           next->lda,
+                           swapStartEvent[HPL_LOOK_AHEAD]);
     } else {
       // start Ubcast+row swapping for first part of A
-      HPL_pdlaswp_start(next, HPL_UPD_1);
+      HPL_pdlaswp_start(next,
+                        next->nu1,
+                        next->U1,
+                        next->ldu1,
+                        W1,
+                        next->ldu1,
+                        Mptr(next->A, 0, next->nu0, next->lda),
+                        next->lda,
+                        swapStartEvent[HPL_UPD_1]);
 
-      HPL_pdlaswp_exchange(next, HPL_UPD_2);
+      HPL_pdlaswp_exchange(next,
+                           next->nu2,
+                           next->U2,
+                           next->ldu2,
+                           W2,
+                           next->ldu2,
+                           Mptr(next->A, 0, next->nu0 + next->nu1, next->lda),
+                           next->lda,
+                           swapStartEvent[HPL_UPD_2]);
     }
 
     // wait here for the updates to compete
@@ -378,10 +516,24 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
    * Clean-up: Finish updates - release panels and panel list
    */
   // nn = HPL_numrocI(1, N, nb, nb, mycol, 0, npcol);
-  HPL_pdlaswp_end(curr, HPL_LOOK_AHEAD);
+  HPL_pdlaswp_end(curr,
+                  curr->nu0,
+                  curr->U0,
+                  curr->ldu0,
+                  W0,
+                  curr->ldu0,
+                  curr->A,
+                  curr->lda);
   HPL_pdupdate(curr, HPL_LOOK_AHEAD);
 
-  HPL_pdlaswp_end(curr, HPL_UPD_2);
+  HPL_pdlaswp_end(curr,
+                  curr->nu2,
+                  curr->U2,
+                  curr->ldu2,
+                  W2,
+                  curr->ldu2,
+                  Mptr(curr->A, 0, curr->nu0 + curr->nu1, curr->lda),
+                  curr->lda);
   HPL_pdupdate(curr, HPL_UPD_2);
 
 #ifdef HPL_DETAILED_TIMING

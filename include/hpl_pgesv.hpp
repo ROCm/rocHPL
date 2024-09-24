@@ -150,9 +150,33 @@ void HPL_plindx(HPL_T_panel*,
                 int*,
                 int*);
 
-void HPL_pdlaswp_start(HPL_T_panel* PANEL, const HPL_T_UPD UPD);
-void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD);
-void HPL_pdlaswp_end(HPL_T_panel* PANEL, const HPL_T_UPD UPD);
+void HPL_pdlaswp_start(HPL_T_panel*,
+                       const int,
+                       double*,
+                       const int,
+                       double*,
+                       const int,
+                       double*,
+                       const int,
+                       const hipEvent_t&);
+void HPL_pdlaswp_exchange(HPL_T_panel*,
+                          const int,
+                          double*,
+                          const int,
+                          double*,
+                          const int,
+                          double*,
+                          const int,
+                          const hipEvent_t&);
+void HPL_pdlaswp_end(HPL_T_panel*,
+                     const int,
+                     double*,
+                     const int,
+                     double*,
+                     const int,
+                     double*,
+                     const int);
+
 void HPL_pdupdateNT(HPL_T_panel*, const HPL_T_UPD);
 void HPL_pdupdateTT(HPL_T_panel*, const HPL_T_UPD);
 void HPL_pdgesv(HPL_T_grid*, HPL_T_palg*, HPL_T_pmat*);

@@ -107,12 +107,7 @@ void HPL_pdtest(HPL_T_test* TEST,
   }
 
   (void)HPL_barrier(GRID->all_comm);
-  ierr = HPL_WarmUp(TEST, GRID, ALGO, &mat);
-  if(ierr != HPL_SUCCESS) {
-    (TEST->kskip)++;
-    HPL_pdmatfree(&mat);
-    return;
-  }
+  HPL_WarmUp(TEST, GRID, ALGO, &mat);
 
   /*
    * generate matrix and right-hand-side, [ A | b ] which is N by N+1.

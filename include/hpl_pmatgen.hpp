@@ -65,10 +65,10 @@ int HPL_pdmatgen(HPL_T_test*,
                  const int,
                  const int);
 
-int HPL_WarmUp(HPL_T_test* TEST,
-               HPL_T_grid* GRID,
-               HPL_T_palg* ALGO,
-               HPL_T_pmat* mat);
+void HPL_WarmUp(HPL_T_test* TEST,
+                HPL_T_grid* GRID,
+                HPL_T_palg* ALGO,
+                HPL_T_pmat* mat);
 
 void HPL_pdmatfree(HPL_T_pmat*);
 
