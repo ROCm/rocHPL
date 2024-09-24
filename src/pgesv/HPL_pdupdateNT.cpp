@@ -66,41 +66,23 @@ void HPL_pdupdateNT(HPL_T_panel* PANEL,
   /*
    * Update
    */
-  if(PANEL->grid->nprow == 1) {
-    /*
-     * 1 x Q case
-     */
-    CHECK_ROCBLAS_ERROR(rocblas_dtrsm(handle,
-                                      rocblas_side_left,
-                                      rocblas_fill_lower,
-                                      rocblas_operation_none,
-                                      rocblas_diagonal_unit,
-                                      jb,
-                                      N,
-                                      &one,
-                                      L1,
-                                      jb,
-                                      A,
-                                      LDA));
+  if(PANEL->grid->nprow == 1) HPL_dlatcpy_gpu(N, jb, A, LDA, U, LDU);
 
-    HPL_dlatcpy_gpu(N, jb, A, LDA, U, LDU);
-  } else {
-    /*
-     * Compute redundantly row block of U and update trailing submatrix
-     */
-    CHECK_ROCBLAS_ERROR(rocblas_dtrsm(handle,
-                                      rocblas_side_right,
-                                      rocblas_fill_lower,
-                                      rocblas_operation_transpose,
-                                      rocblas_diagonal_unit,
-                                      N,
-                                      jb,
-                                      &one,
-                                      L1,
-                                      jb,
-                                      U,
-                                      LDU));
-  }
+  /*
+   * Compute redundantly row block of U and update trailing submatrix
+   */
+  CHECK_ROCBLAS_ERROR(rocblas_dtrsm(handle,
+                                    rocblas_side_right,
+                                    rocblas_fill_lower,
+                                    rocblas_operation_transpose,
+                                    rocblas_diagonal_unit,
+                                    N,
+                                    jb,
+                                    &one,
+                                    L1,
+                                    jb,
+                                    U,
+                                    LDU));
 
   /*
    * Queue finishing the update
@@ -123,7 +105,7 @@ void HPL_pdupdateNT(HPL_T_panel* PANEL,
                                       LDA));
     CHECK_HIP_ERROR(hipEventRecord(gemmStop, stream));
 
-    if(PANEL->grid->nprow > 1) HPL_dlatcpy_gpu(jb, N, U, LDU, A, LDA);
+    HPL_dlatcpy_gpu(jb, N, U, LDU, A, LDA);
   } else {
     CHECK_HIP_ERROR(hipEventRecord(gemmStart, stream));
     CHECK_ROCBLAS_ERROR(rocblas_dgemm(handle,
