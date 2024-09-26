@@ -307,6 +307,7 @@ void HPL_pdlaswp_end(HPL_T_panel* PANEL,
   // just local swaps if we're 1xQ
   if(nprow == 1) {
     HPL_dlaswp00N(jb, N, A, LDA, permU);
+    HPL_dlatcpy_gpu(N, jb, A, LDA, U, LDU);
     return;
   }
 

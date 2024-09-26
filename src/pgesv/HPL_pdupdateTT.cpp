@@ -17,6 +17,7 @@
 #include "hpl.hpp"
 
 void HPL_pdupdateTT(HPL_T_panel* PANEL,
+                    const int M,
                     const int N,
                     double*   U,
                     const int LDU,
@@ -56,17 +57,10 @@ void HPL_pdupdateTT(HPL_T_panel* PANEL,
   const double* L2 = PANEL->L2;
   const double* L1 = PANEL->L1;
 
-  const int curr = (PANEL->grid->myrow == PANEL->prow ? 1 : 0);
   const int ldl2 = PANEL->ldl2;
-  const int mp   = PANEL->mp - (curr != 0 ? jb : 0);
 
   const double one  = 1.0;
   const double mone = -1.0;
-
-  /*
-   * Update
-   */
-  if(PANEL->grid->nprow == 1) HPL_dlatcpy_gpu(N, jb, A, LDA, U, LDU);
 
   /*
    * Compute redundantly row block of U and update trailing submatrix
@@ -87,41 +81,20 @@ void HPL_pdupdateTT(HPL_T_panel* PANEL,
   /*
    * Queue finishing the update
    */
-  if(curr != 0) {
-    CHECK_HIP_ERROR(hipEventRecord(gemmStart, stream));
-    CHECK_ROCBLAS_ERROR(rocblas_dgemm(handle,
-                                      rocblas_operation_none,
-                                      rocblas_operation_transpose,
-                                      mp,
-                                      N,
-                                      jb,
-                                      &mone,
-                                      L2,
-                                      ldl2,
-                                      U,
-                                      LDU,
-                                      &one,
-                                      Mptr(A, jb, 0, LDA),
-                                      LDA));
-    CHECK_HIP_ERROR(hipEventRecord(gemmStop, stream));
-
-    HPL_dlatcpy_gpu(jb, N, U, LDU, A, LDA);
-  } else {
-    CHECK_HIP_ERROR(hipEventRecord(gemmStart, stream));
-    CHECK_ROCBLAS_ERROR(rocblas_dgemm(handle,
-                                      rocblas_operation_none,
-                                      rocblas_operation_transpose,
-                                      mp,
-                                      N,
-                                      jb,
-                                      &mone,
-                                      L2,
-                                      ldl2,
-                                      U,
-                                      LDU,
-                                      &one,
-                                      A,
-                                      LDA));
-    CHECK_HIP_ERROR(hipEventRecord(gemmStop, stream));
-  }
+  CHECK_HIP_ERROR(hipEventRecord(gemmStart, stream));
+  CHECK_ROCBLAS_ERROR(rocblas_dgemm(handle,
+                                    rocblas_operation_none,
+                                    rocblas_operation_transpose,
+                                    M,
+                                    N,
+                                    jb,
+                                    &mone,
+                                    L2,
+                                    ldl2,
+                                    U,
+                                    LDU,
+                                    &one,
+                                    A,
+                                    LDA));
+  CHECK_HIP_ERROR(hipEventRecord(gemmStop, stream));
 }

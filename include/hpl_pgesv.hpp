@@ -60,6 +60,7 @@ typedef enum {
 
 typedef void (*HPL_T_UPD_FUN)(HPL_T_panel*,
                               const int,
+                              const int,
                               double*,
                               const int,
                               double*,
@@ -186,6 +187,7 @@ void HPL_pdlaswp_end(HPL_T_panel*,
 
 void HPL_pdupdateNT(HPL_T_panel*,
                     const int,
+                    const int,
                     double*,
                     const int,
                     double*,
@@ -193,6 +195,7 @@ void HPL_pdupdateNT(HPL_T_panel*,
                     const hipEvent_t&,
                     const hipEvent_t&);
 void HPL_pdupdateTT(HPL_T_panel*,
+                    const int,
                     const int,
                     double*,
                     const int,
