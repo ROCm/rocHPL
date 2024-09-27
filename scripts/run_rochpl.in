@@ -24,6 +24,8 @@ function display_help()
   echo "            rows/columns in global matrix.                "
   echo "    [--NB]  Specific panel size: the number of            "
   echo "            rows/columns in panels.                       "
+  echo "    [--it]  Iterations: the number of times to run each   "
+  echo "            problem size.                                 "
   echo "    [-f]    Specific split fraction: the percentange to   "
   echo "            split the trailing submatrix.                 "
   echo "    [-i]    Input file. When set, all other commnand      "
@@ -93,6 +95,7 @@ p=-1
 q=-1
 N=45312
 NB=384
+it=1
 frac=0.3
 
 filename=HPL.dat
@@ -110,7 +113,7 @@ oversubscribe=true
 # check if we have a modern version of getopt that can handle whitespace and long parameters
 getopt -T
 if [[ $? -eq 4 ]]; then
-  GETOPT_PARSE=$(getopt --name "${0}" --longoptions NB:,help,version, --options hP:Q:p:q:N:i:f: -- "$@")
+  GETOPT_PARSE=$(getopt --name "${0}" --longoptions NB:,it:,help,version, --options hP:Q:p:q:N:i:f: -- "$@")
 else
   echo "Need a new version of getopt"
   exit 1
@@ -152,6 +155,9 @@ while true; do
     --NB)
         NB=${2}
         cmdrun=true
+        shift 2 ;;
+    --it)
+        it=${2}
         shift 2 ;;
     -f)
         frac=${2}
@@ -527,7 +533,7 @@ if [[ $globalRank -lt $size ]]; then
   echo "Node Binding: Process $rank [(p,q)=($myp,$myq)] CPU Cores: $omp_num_threads - $places"
 fi
 
-rochpl_args="-P ${P} -Q ${Q} -p ${p} -q ${q} -f ${frac}"
+rochpl_args="-P ${P} -Q ${Q} -p ${p} -q ${q} -f ${frac} -it ${it}"
 if [[ "${inputfile}" == true ]]; then
   rochpl_args+=" -i ${filename}"
 else

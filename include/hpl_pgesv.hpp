@@ -75,6 +75,7 @@ typedef struct HPL_S_palg {
   int           equil; /* Equilibration */
   int           align; /* data alignment constant */
   double        frac;  /* update split percentage */
+  int           its;   /* iterations */
 } HPL_T_palg;
 
 typedef struct HPL_S_pmat {

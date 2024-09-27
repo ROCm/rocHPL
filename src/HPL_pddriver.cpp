@@ -45,6 +45,7 @@ int main(int ARGC, char** ARGV) {
   HPL_T_FACT  rpfa;
   HPL_T_SWAP  fswap;
   double      frac;
+  int         its;
   int         p, q;
 
   MPI_Init(&ARGC, &ARGV);
@@ -119,7 +120,8 @@ int main(int ARGC, char** ARGV) {
              &Unotran,
              &equil,
              &align,
-             &frac);
+             &frac,
+             &its);
 
   /*
    * Loop over different process grids - Define process grid. Go to bottom
@@ -203,6 +205,7 @@ int main(int ARGC, char** ARGV) {
                     algo.align = align;
 
                     algo.frac = frac;
+                    algo.its  = its;
 
                     HPL_pdtest(&test, &grid, &algo, nval[in], nbval[inb]);
                   }

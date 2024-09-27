@@ -50,7 +50,8 @@ void HPL_pdinfo(int          ARGC,
                 int*         UNOTRAN,
                 int*         EQUIL,
                 int*         ALIGN,
-                double*      FRAC) {
+                double*      FRAC,
+                int*         ITS) {
   /*
    * Purpose
    * =======
@@ -214,6 +215,10 @@ void HPL_pdinfo(int          ARGC,
    *         On exit,  FRAC  specifies the percentage in which to split the
    *         the trailing update.
    *
+   * ITS     (global output)               int *
+   *         On exit,  ITS  specifies the number of iterations of each
+   *         problem to run.
+   *
    * ---------------------------------------------------------------------
    */
 
@@ -237,6 +242,7 @@ void HPL_pdinfo(int          ARGC,
   // parse settings
   int         _P = 1, _Q = 1, n = 45312, nb = 384;
   int         _p = -1, _q = -1;
+  int         _it = 1;
   bool        cmdlinerun    = false;
   bool        inputfile     = false;
   double      frac          = 0.3;
@@ -366,6 +372,10 @@ void HPL_pdinfo(int          ARGC,
       frac = atof(ARGV[i + 1]);
       i++;
     }
+    if(strcmp(ARGV[i], "-it") == 0) {
+      _it = atoi(ARGV[i + 1]);
+      i++;
+    }
     if(strcmp(ARGV[i], "-i") == 0 || strcmp(ARGV[i], "--input") == 0) {
       inputFileName = ARGV[i + 1];
       inputfile     = true;
@@ -392,6 +402,18 @@ void HPL_pdinfo(int          ARGC,
    * Split fraction
    */
   *FRAC = frac;
+
+  if(_it < 0) {
+    if(rank == 0)
+      HPL_pwarn(stderr,
+                __LINE__,
+                "HPL_pdinfo",
+                "Invalid number of iterations: %d",
+                _it);
+    MPI_Finalize();
+    exit(1);
+  }
+  *ITS = _it;
 
   /*Node-local grid*/
   MPI_Comm nodeComm;
