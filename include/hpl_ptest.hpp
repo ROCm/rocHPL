@@ -106,7 +106,8 @@ void HPL_pdinfo(int    ARGC,
                 int*,
                 int*,
                 int*,
-                double*);
+                double*,
+                int*);
 
 int HPL_pdwarmup(HPL_T_test* TEST,
                  HPL_T_grid* GRID,
