@@ -159,7 +159,7 @@ void HPL_pdpanel_init(HPL_T_grid*  GRID,
   ml2 = ((ml2 + 95) / 128) * 128 + 32; /*pad*/
 
   /* Size of LBcast message */
-  PANEL->len = ml2 * JB + JB * JB + lpiv; // L2, L1, integer arrays
+  PANEL->len = ml2 * nb + JB * JB + lpiv; // L2, L1, integer arrays
 
   /*
    * Initialize the pointers of the panel structure
@@ -167,7 +167,7 @@ void HPL_pdpanel_init(HPL_T_grid*  GRID,
   PANEL->lda0 = Mmax(0, ml2);
   PANEL->ldl2 = PANEL->lda0;
   PANEL->L2   = PANEL->A0 + (myrow == icurrow ? JB : 0);
-  PANEL->L1   = PANEL->A0 + ml2 * JB;
+  PANEL->L1   = PANEL->A0 + ml2 * nb;
   PANEL->ipiv = reinterpret_cast<int*>(PANEL->L1 + JB * JB);
 
   nu  = Mmax(0, (mycol == icurcol ? nq - JB : nq));
