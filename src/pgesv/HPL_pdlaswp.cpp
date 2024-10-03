@@ -38,9 +38,7 @@ void HPL_pdlaswp_start(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    * .. Local Variables ..
    */
   double *A, *U, *W;
-  int *   ipID, *iplen, *ipcounts, *ipoffsets, *iwork,
-      *lindxU = NULL, *lindxA = NULL, *lindxAU, *permU;
-  int icurrow, *iflag, *ipA, *ipl, jb, k, lda, myrow, n, nprow, LDU, LDW;
+  int icurrow, jb, k, lda, myrow, n, nprow, LDU, LDW;
 
   /* ..
    * .. Executable Statements ..
@@ -96,19 +94,13 @@ void HPL_pdlaswp_start(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    */
   if((n <= 0) || (jb <= 0)) return;
 
-  permU    = PANEL->IWORK;
-  lindxU   = permU + jb;
-  lindxA   = lindxU + jb;
-  lindxAU  = lindxA + jb;
+  int *permU    = PANEL->dipiv;
+  int *lindxU   = permU + jb;
+  int *lindxA   = lindxU + jb;
+  int *lindxAU  = lindxA + jb;
 
-  k         = (int)((unsigned int)(jb) << 1);
-  ipl       = lindxAU + jb;
-  ipID      = ipl + 1;
-  ipA       = ipID + ((unsigned int)(k) << 1);
-  iplen     = ipA + 1;
-  ipcounts  = iplen + nprow + 1;
-  ipoffsets = ipcounts + nprow;
-  iwork     = ipoffsets + nprow;
+  int *ipA       = PANEL->ipiv + 5 * jb;
+  int *iplen     = ipA + 1;
 
   /*
    * For i in [0..2*jb),  lindxA[i] is the offset in A of a row that ulti-
@@ -175,9 +167,7 @@ void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    * .. Local Variables ..
    */
   double *A, *U, *W;
-  int *   ipID, *iplen, *ipcounts, *ipoffsets, *iwork;
-  int *   lindxU = NULL, *lindxA = NULL, *lindxAU, *permU;
-  int     icurrow, *iflag, *ipA, *ipl, jb, k, lda, myrow, n, nprow, LDU, LDW;
+  int     icurrow, jb, k, lda, myrow, n, nprow, LDU, LDW;
 
   /* ..
    * .. Executable Statements ..
@@ -233,27 +223,15 @@ void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    */
   if((n <= 0) || (jb <= 0)) return;
 
-  /*
-   * Compute ipID (if not already done for this panel). lindxA and lindxAU
-   * are of length at most 2*jb - iplen is of size nprow+1, ipmap, ipmapm1
-   * are of size nprow,  permU is of length jb, and  this function needs a
-   * workspace of size max( 2 * jb (plindx1), nprow+1(equil)):
-   * 1(iflag) + 1(ipl) + 1(ipA) + 9*jb + 3*nprow + 1 + MAX(2*jb,nprow+1)
-   * i.e. 4 + 9*jb + 3*nprow + max(2*jb, nprow+1);
-   */
-  permU    = PANEL->IWORK;
-  lindxU   = permU + jb;
-  lindxA   = lindxU + jb;
-  lindxAU  = lindxA + jb;
+  int *permU    = PANEL->dipiv;
+  int *lindxU   = permU + jb;
+  int *lindxA   = lindxU + jb;
+  int *lindxAU  = lindxA + jb;
 
-  k         = (int)((unsigned int)(jb) << 1);
-  ipl       = lindxAU + jb;
-  ipID      = ipl + 1;
-  ipA       = ipID + ((unsigned int)(k) << 1);
-  iplen     = ipA + 1;
-  ipcounts  = iplen + nprow + 1;
-  ipoffsets = ipcounts + nprow;
-  iwork     = ipoffsets + nprow;
+  int *ipA       = PANEL->ipiv + 5 * jb;
+  int *iplen     = ipA + 1;
+  int *ipcounts  = iplen + nprow + 1;
+  int *ipoffsets = ipcounts + nprow;
 
   /* Set MPI message counts and offsets */
   ipcounts[0]  = (iplen[1] - iplen[0]) * LDU;
@@ -265,13 +243,6 @@ void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   }
   ipoffsets[nprow] = ipcounts[nprow - 1] + ipoffsets[nprow - 1];
 
-  /*
-   * For i in [0..2*jb),  lindxA[i] is the offset in A of a row that ulti-
-   * mately goes to U( :, lindxAU[i] ).  In each rank, we directly pack
-   * into U, otherwise we pack into workspace. The  first
-   * entry of each column packed in workspace is in fact the row or column
-   * offset in U where it should go to.
-   */
 
   if(myrow == icurrow) {
 
@@ -351,9 +322,7 @@ void HPL_pdlaswp_end(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    * .. Local Variables ..
    */
   double *A, *U, *W;
-  int *   ipID, *iplen, *ipcounts, *ipoffsets, *iwork;
-  int *   lindxA = NULL, *lindxAU, *lindxU, *permU;
-  int     icurrow, *iflag, *ipA, *ipl, jb, k, lda, myrow, n, nprow, LDU, LDW;
+  int     icurrow, jb, k, lda, myrow, n, nprow, LDU, LDW;
 
   /* ..
    * .. Executable Statements ..
@@ -406,33 +375,19 @@ void HPL_pdlaswp_end(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    */
   if((n <= 0) || (jb <= 0)) return;
 
-  permU    = PANEL->IWORK;
-  lindxU   = permU + jb;
-  lindxA   = lindxU + jb;
-  lindxAU  = lindxA + jb;
+  int *permU    = PANEL->dipiv;
+  int *lindxU   = permU + jb;
+  int *lindxA   = lindxU + jb;
+  int *lindxAU  = lindxA + jb;
 
-  k         = (int)((unsigned int)(jb) << 1);
-  ipl       = lindxAU + jb;
-  ipID      = ipl + 1;
-  ipA       = ipID + ((unsigned int)(k) << 1);
-  iplen     = ipA + 1;
-  ipcounts  = iplen + nprow + 1;
-  ipoffsets = ipcounts + nprow;
-  iwork     = ipoffsets + nprow;
+  int *ipA       = PANEL->ipiv + 5 * jb;
+  int *iplen     = ipA + 1;
 
   // just local swaps if we're 1xQ
   if(nprow == 1) {
     HPL_dlaswp00N(jb, n, A, lda, permU);
     return;
   }
-
-  /*
-   * For i in [0..2*jb),  lindxA[i] is the offset in A of a row that ulti-
-   * mately goes to U( :, lindxAU[i] ).  In each rank, we directly pack
-   * into U, otherwise we pack into workspace. The  first
-   * entry of each column packed in workspace is in fact the row or column
-   * offset in U where it should go to.
-   */
 
   if(myrow == icurrow) {
     // swap rows local to A on device

@@ -132,8 +132,8 @@ int HPL_pdpanel_new(HPL_T_test*   TEST,
   int mp = HPL_numrocI(N,   0, nb, nb, myrow, 0, nprow);
   int nq = HPL_numrocI(N+1, 0, nb, nb, mycol, 0, npcol);
 
-  // LBroadcast Space. Holds A0/L2 + L1 + ipiv
-  size_t lpiv = (nb * sizeof(int) + sizeof(double) - 1) / (sizeof(double));
+  // LBroadcast Space. Holds A0/L2 + L1 + pivoting arrays
+  size_t lpiv = ((4 * nb + 1 + nprow + 1) * sizeof(int) + sizeof(double) - 1) / (sizeof(double));
   size_t numbytes = (A->ld * nb + nb * nb + lpiv) * sizeof(double);
 
   totalMem += numbytes;
@@ -233,15 +233,13 @@ int HPL_pdpanel_new(HPL_T_test*   TEST,
   iwork = mp + 3 + (9 * nb) + (3 * nprow) + itmp1;
 
   numbytes = iwork * sizeof(int);
-  totalMem += numbytes;
-  if(deviceMalloc(GRID, (void**)&(PANEL->IWORK), numbytes, info) != HPL_SUCCESS) {
+  if(hostMalloc(GRID, (void**)&(PANEL->IWORK), numbytes, info) != HPL_SUCCESS) {
     HPL_pwarn(TEST->outfp,
               __LINE__,
               "HPL_pdpanel_new",
-              "[%d,%d] Device memory allocation failed for integer workspace. Requested %g GiBs total. Test Skiped.",
+              "[%d,%d] Host memory allocation failed for integer workspace. Test Skiped.",
               info[1],
-              info[2],
-              ((double)totalMem) / (1024 * 1024 * 1024));
+              info[2]);
     return HPL_FAILURE;
   }
 

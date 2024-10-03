@@ -124,12 +124,13 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
                       Mptr(curr->A, 0, -curr->jb, curr->lda),
                       curr->lda);
     }
+
+    // compute swapping info
+    HPL_pdpanel_swapids(curr);
   }
 
+  if(mycol == icurcol) CHECK_HIP_ERROR(hipEventSynchronize(pfactStop));
   HPL_pdpanel_bcast(curr);
-
-  // compute swapping info
-  HPL_pdpanel_swapids(curr);
 
   // start Ubcast+row swapping for second part of A
   HPL_pdlaswp_start(curr, HPL_UPD_2);
@@ -221,6 +222,9 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
                         Mptr(next->A, 0, -next->jb, next->lda),
                         next->lda);
       }
+
+      // compute swapping info
+      HPL_pdpanel_swapids(next);
     }
 
     /* Queue up finishing the second section */
@@ -228,10 +232,8 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
     HPL_pdupdate(curr, HPL_UPD_2);
 
     /* broadcast current panel */
+    if(mycol == icurcol) CHECK_HIP_ERROR(hipEventSynchronize(pfactStop));
     HPL_pdpanel_bcast(next);
-
-    // compute swapping info
-    HPL_pdpanel_swapids(next);
 
     // start Ubcast+row swapping for second part of A
     HPL_pdlaswp_start(next, HPL_UPD_2);

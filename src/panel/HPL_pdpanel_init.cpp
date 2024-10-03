@@ -152,7 +152,7 @@ void HPL_pdpanel_init(HPL_T_grid*  GRID,
   /*Split fraction*/
   const double fraction = ALGO->frac;
 
-  size_t lpiv = (nb * sizeof(int) + sizeof(double) - 1) / (sizeof(double));
+  size_t lpiv = ((4 * nb + 1 + nprow + 1) * sizeof(int) + sizeof(double) - 1) / (sizeof(double));
 
   ml2 = mp;
   ml2 = Mmax(0, ml2);
@@ -168,7 +168,9 @@ void HPL_pdpanel_init(HPL_T_grid*  GRID,
   PANEL->ldl2 = PANEL->lda0;
   PANEL->L2   = PANEL->A0 + (myrow == icurrow ? JB : 0);
   PANEL->L1   = PANEL->A0 + ml2 * JB;
-  PANEL->ipiv = reinterpret_cast<int*>(PANEL->L1 + JB * JB);
+  PANEL->dipiv = reinterpret_cast<int*>(PANEL->L1 + JB * JB);
+
+  PANEL->ipiv = PANEL->IWORK;
 
   nu  = Mmax(0, (mycol == icurcol ? nq - JB : nq));
   ldu = nu + JB + 256; /*extra space for potential padding*/

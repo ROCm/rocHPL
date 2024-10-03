@@ -129,9 +129,9 @@ __global__ void pdfact(const int M,
   barrier_t barrier(locks+0, locks+1, gridDim.x);
 
   //Device workspaces to hold pivoted rows at agent scope
-  double *Amax = host_workspace + 4;
-  double *Acur = host_workspace + 4 + NB;
-  double *candidate_rows = dev_workspace;
+  double *Amax = dev_workspace + 4;
+  double *Acur = dev_workspace + 4 + NB;
+  double *candidate_rows = dev_workspace + 4 + 2 * NB;
 
   double amax, acur;
 
@@ -146,7 +146,7 @@ __global__ void pdfact(const int M,
       loc=-1;
       max=0.;
       for (int id=t+1;id<gridDim.x;id+=BLOCKSIZE) {
-        const double r_max = __hip_atomic_load(&max_workspace[id], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+        const double r_max = __hip_atomic_load(&max_workspace[id], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
         if (std::abs(r_max) > std::abs(max)) {
           loc = id;
           max = r_max;
@@ -159,9 +159,9 @@ __global__ void pdfact(const int M,
       if (t<NB) {
         //Read local candidate pivot row out of agent work buffer
         if (curr) {
-          acur = __hip_atomic_load(&candidate_rows[t],            __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+          acur = __hip_atomic_load(&candidate_rows[t],            __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
         }
-        amax = __hip_atomic_load(&candidate_rows[t + loc * NB], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+        amax = __hip_atomic_load(&candidate_rows[t + loc * NB], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
 
         //write row into host swap space
         __hip_atomic_store(&host_workspace[4+t],    amax, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
@@ -172,7 +172,7 @@ __global__ void pdfact(const int M,
 
       if(t==0) {
         //Write row number and max val to header
-        loc = __hip_atomic_load(&loc_workspace[loc], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+        loc = __hip_atomic_load(&loc_workspace[loc], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
         __hip_atomic_store(&host_workspace[0], static_cast<double>(max), __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
         __hip_atomic_store(&host_workspace[1], static_cast<double>(loc), __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
       }
@@ -187,12 +187,37 @@ __global__ void pdfact(const int M,
 
         //Wait for Host to unlock
         while (__hip_atomic_load(host_flag, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM) != 0) {}
-        barrier.leader_release();
       }
       __syncthreads();
 
       if (t<NB) {
-        L1[t + jj*NB] = __hip_atomic_load(&host_workspace[4+t],    __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+        //Read pivot row out of host swap space
+        amax = __hip_atomic_load(&host_workspace[4+t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+        acur = __hip_atomic_load(&host_workspace[4+t+NB], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+
+        //write row into agent work buffer
+        __hip_atomic_store(&Amax[t], amax, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+        __hip_atomic_store(&Acur[t], acur, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+      }
+
+      if (t==0) {
+        const double gmax   = __hip_atomic_load(&host_workspace[0], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+        const double srcloc = __hip_atomic_load(&host_workspace[1], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+        const double srcrow = __hip_atomic_load(&host_workspace[3], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+        __hip_atomic_store(&dev_workspace[0], gmax,   __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+        __hip_atomic_store(&dev_workspace[1], srcloc, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+        __hip_atomic_store(&dev_workspace[3], srcrow, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+      }
+
+      __builtin_amdgcn_fence(__ATOMIC_ACQUIRE, "workgroup");
+      __builtin_amdgcn_s_waitcnt(0);
+      __builtin_amdgcn_s_barrier();
+
+      if (t==0) barrier.leader_release();
+      __syncthreads();
+
+      if (t<NB) {
+        L1[t + jj*NB] = amax;
       }
     }
 
@@ -217,17 +242,17 @@ __global__ void pdfact(const int M,
 
     if (t<NB) {
       // Write out to workspace
-      __hip_atomic_store(&candidate_rows[t + block * NB], A[loc + t * LDA], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+      __hip_atomic_store(&candidate_rows[t + block * NB], A[loc + t * LDA], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
 
       //write top row to workspace
       if (bcurr) {
-        __hip_atomic_store(&candidate_rows[t], A[0 + t*LDA], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+        __hip_atomic_store(&candidate_rows[t], A[0 + t*LDA], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
       }
     }
 
     if (t==0) {
-      __hip_atomic_store(&loc_workspace[block], loc, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-      __hip_atomic_store(&max_workspace[block], max, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+      __hip_atomic_store(&loc_workspace[block], loc, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+      __hip_atomic_store(&max_workspace[block], max, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
     }
 
     __builtin_amdgcn_fence(__ATOMIC_ACQUIRE, "workgroup");
@@ -244,9 +269,9 @@ __global__ void pdfact(const int M,
 
     for (int jj = 1; jj < JB; ++jj) {
       // Perform the row swap
-      const double gmax = __hip_atomic_load(&host_workspace[0], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-      const int srcloc = static_cast<int>(__hip_atomic_load(&host_workspace[1], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM));
-      const int srcrow = static_cast<int>(__hip_atomic_load(&host_workspace[3], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM));
+      const double gmax = __hip_atomic_load(&dev_workspace[0], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+      const int srcloc = static_cast<int>(__hip_atomic_load(&dev_workspace[1], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT));
+      const int srcrow = static_cast<int>(__hip_atomic_load(&dev_workspace[3], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT));
       const int srcBlock = srcloc/BLOCKSIZE + 1;
 
       //shift down a row
@@ -255,12 +280,12 @@ __global__ void pdfact(const int M,
       double acmax;
       if (t<NB) {
         //Read in the Amax row to LDS
-        acmax = __hip_atomic_load(&Amax[t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+        acmax = __hip_atomic_load(&Amax[t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
         s_Amax[t] = acmax;
 
 
         if (myrow == srcrow && block == srcBlock) {
-          A[srcloc + t*LDA] = __hip_atomic_load(&Acur[t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+          A[srcloc + t*LDA] = __hip_atomic_load(&Acur[t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
         }
       }
       __syncthreads();
@@ -302,17 +327,17 @@ __global__ void pdfact(const int M,
         }
 
         // Write out to workspace
-        __hip_atomic_store(&candidate_rows[t + block * NB], amax, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+        __hip_atomic_store(&candidate_rows[t + block * NB], amax, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
 
         // Write top row
         if (bcurr) {
-          __hip_atomic_store(&candidate_rows[t], acur,  __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+          __hip_atomic_store(&candidate_rows[t], acur,  __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
         }
       }
 
       if (t==0) {
-        __hip_atomic_store(&loc_workspace[block], loc, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-        __hip_atomic_store(&max_workspace[block], max, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+        __hip_atomic_store(&loc_workspace[block], loc, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+        __hip_atomic_store(&max_workspace[block], max, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
       }
 
       __builtin_amdgcn_fence(__ATOMIC_ACQUIRE, "workgroup");
@@ -338,16 +363,16 @@ __global__ void pdfact(const int M,
     }
 
     // Perform final row swap and update
-    const double gmax = __hip_atomic_load(&host_workspace[0], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-    const int srcloc = static_cast<int>(__hip_atomic_load(&host_workspace[1], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM));
-    const int srcrow = static_cast<int>(__hip_atomic_load(&host_workspace[3], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM));
+    const double gmax = __hip_atomic_load(&dev_workspace[0], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+    const int srcloc = static_cast<int>(__hip_atomic_load(&dev_workspace[1], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT));
+    const int srcrow = static_cast<int>(__hip_atomic_load(&dev_workspace[3], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT));
     const int srcBlock = srcloc/BLOCKSIZE + 1;
 
     //shift down a row
     if (bcurr) ii++;
 
     if (myrow == srcrow && block == srcBlock && t<NB) {
-      A[srcloc + t*LDA] = __hip_atomic_load(&Acur[t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+      A[srcloc + t*LDA] = __hip_atomic_load(&Acur[t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
     }
     __syncthreads();
 

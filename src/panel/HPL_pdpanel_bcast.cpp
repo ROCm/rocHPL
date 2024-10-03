@@ -52,5 +52,19 @@ int HPL_pdpanel_bcast(HPL_T_panel* PANEL) {
   HPL_ptimer(HPL_TIMING_LBCAST);
 #endif
 
+  if (PANEL->grid->mycol != root) {
+    //retrieve some host-side pivoting info from bcast message
+    int* dipA = PANEL->dipiv + 4 * PANEL->jb;
+    int* ipA  = PANEL->ipiv + 5 * PANEL->jb;
+    int nprow = PANEL->grid->nprow;
+
+    CHECK_HIP_ERROR(hipMemcpyAsync(ipA,
+                                   dipA,
+                                   (1 + nprow + 1) * sizeof(int),
+                                   hipMemcpyDeviceToHost,
+                                   dataStream));
+    CHECK_HIP_ERROR(hipStreamSynchronize(dataStream));
+  }
+
   return err;
 }

@@ -34,7 +34,7 @@ int HPL_pdpanel_free(HPL_T_panel* PANEL) {
    */
 
   if(PANEL->IWORK) {
-    CHECK_HIP_ERROR(hipFree(PANEL->IWORK));
+    CHECK_HIP_ERROR(hipHostFree(PANEL->IWORK));
     PANEL->IWORK = nullptr;
   }
   if(PANEL->U2) {
