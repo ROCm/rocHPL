@@ -99,7 +99,7 @@ private:
 };
 
 template<int BLOCKSIZE>
-__launch_bounds__(BLOCKSIZE)
+__launch_bounds__(BLOCKSIZE,8)
 __global__ void pdfact(const int M,
                        const int NB,
                        const int JB,
@@ -420,24 +420,32 @@ void HPL_pdpanrlT_device(HPL_T_panel* PANEL,
   constexpr int BLOCKSIZE=1024;
 
   if (M>0) {
-    pdfact<BLOCKSIZE><<<dim3((M+BLOCKSIZE-1)/BLOCKSIZE + 1),
-                        dim3(BLOCKSIZE),
-                        0,
-                        stream>>>(M,
-                                  PANEL->jb,
-                                  N,
-                                  A + ii,
-                                  lda,
-                                  curr,
-                                  myrow,
-                                  jj,
-                                  L1 + jj * PANEL->jb,
-                                  mat->loc_workspace,
-                                  mat->max_workspace,
-                                  mat->dev_workspace,
-                                  mat->host_flag,
-                                  mat->host_workspace,
-                                  mat->locks);
+    int m = M;
+    int n = N;
+    double *Aptr  = A + ii;
+    double *L1ptr = L1 + jj * PANEL->jb;
+
+    void* params[] = {&m,
+                      &(PANEL->jb),
+                      &n,
+                      &Aptr,
+                      &lda,
+                      &curr,
+                      &myrow,
+                      &jj,
+                      &L1ptr,
+                      &(mat->loc_workspace),
+                      &(mat->max_workspace),
+                      &(mat->dev_workspace),
+                      &(mat->host_flag),
+                      &(mat->host_workspace),
+                      &(mat->locks)};
+    CHECK_HIP_ERROR(hipLaunchCooperativeKernel(pdfact<BLOCKSIZE>,
+                                               dim3((M+BLOCKSIZE-1)/BLOCKSIZE + 1),
+                                               dim3(BLOCKSIZE),
+                                               params,
+                                               0,
+                                               stream));
   }
 
   int NB      = PANEL->nb;
