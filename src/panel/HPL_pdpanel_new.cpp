@@ -245,5 +245,26 @@ int HPL_pdpanel_new(HPL_T_test*   TEST,
     return HPL_FAILURE;
   }
 
+  {
+    /*First touch*/
+    for(int j = 0; j < nb; ++j) {
+      for(int i = 0; i < A->ld; i++) {
+        PANEL->A0[i + static_cast<size_t>(A->ld) * j] = 0.0;
+      }
+    }
+
+    double *L1 = PANEL->A0 + nb * static_cast<size_t>(A->ld);
+    for(int j = 0; j < nb; ++j) {
+      for(int i = 0; i < nb; i++) {
+        L1[i + nb * j] = 0.0;
+      }
+    }
+
+    double *piv = L1 + nb * nb;
+    for(int i = 0; i < nb; i++) {
+      piv[i] = 0.0;
+    }
+  }
+
   return HPL_SUCCESS;
 }

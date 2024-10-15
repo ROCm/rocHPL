@@ -245,7 +245,7 @@ void HPL_pdinfo(int          ARGC,
   int         _it = 1;
   bool        cmdlinerun    = false;
   bool        inputfile     = false;
-  double      frac          = 0.3;
+  double      frac          = 0.6;
   std::string inputFileName = "HPL.dat";
 
   for(int i = 1; i < ARGC; i++) {
@@ -515,7 +515,7 @@ void HPL_pdinfo(int          ARGC,
      * Recursive stopping criterium (>=1) (NBM)
      */
     *NBMS  = 1;
-    NBM[0] = 32;
+    NBM[0] = 4;
     /*
      * Number of panels in recursion (>=2) (NDV)
      */

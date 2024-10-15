@@ -114,6 +114,7 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
                    curr->A0,
                    curr->lda0);
 
+    CHECK_HIP_ERROR(hipDeviceSynchronize());
     HPL_pdfact(curr);
 
     if (myrow == curr->prow) {
@@ -209,8 +210,14 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
                      next->A0,
                      next->lda0);
 
+      CHECK_HIP_ERROR(hipEventRecord(pfactStart, computeStream));
+
+      HPL_pdlaswp_end(curr, HPL_UPD_2);
+      HPL_pdupdate(curr, HPL_UPD_2);
+
       /*Panel factorization FLOP count is (2/3)NB^3 - (1/2)NB^2 - (1/6)NB +
        * (N-i*NB)(NB^2-NB)*/
+      CHECK_HIP_ERROR(hipEventSynchronize(pfactStart));
       HPL_pdfact(next); /* factor current panel */
 
       if (myrow == next->prow) {
@@ -221,11 +228,11 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
                         Mptr(next->A, 0, -next->jb, next->lda),
                         next->lda);
       }
+    } else {
+      /* Queue up finishing the second section */
+      HPL_pdlaswp_end(curr, HPL_UPD_2);
+      HPL_pdupdate(curr, HPL_UPD_2);
     }
-
-    /* Queue up finishing the second section */
-    HPL_pdlaswp_end(curr, HPL_UPD_2);
-    HPL_pdupdate(curr, HPL_UPD_2);
 
     /* broadcast current panel */
     HPL_pdpanel_bcast(next);
@@ -349,11 +356,8 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
       }
 
       if(curr->nu0) {
-        float pfactTime = 0.;
-        CHECK_HIP_ERROR(hipEventElapsedTime(&pfactTime, pfactStart, pfactStop));
-
         printf("  %9.3e |  %9.3e |",
-               static_cast<double>(pfactTime)/1000,
+               HPL_ptimer_getStep(HPL_TIMING_RPFACT),
                HPL_ptimer_getStep(HPL_TIMING_MXSWP));
       } else {
         printf("            |            |");

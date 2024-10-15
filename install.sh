@@ -160,7 +160,7 @@ install_openmpi( )
         [ ! -f "${ucx_lib_folder}/libucs.so" ] || [ ! -f "${ucx_lib_folder}/libuct.so" ]) && \
        ([ ! -f "${ucx_lib64_folder}/libucm.so" ] || [ ! -f "${ucx_lib64_folder}/libucp.so" ]  || \
         [ ! -f "${ucx_lib64_folder}/libucs.so" ] || [ ! -f "${ucx_lib64_folder}/libuct.so" ]); then
-    cd tpl/ucx; 
+    cd tpl/ucx;
     ./autogen.sh; ./autogen.sh
     check_exit_code 2
     mkdir build; cd build
