@@ -289,6 +289,8 @@ int HPL_WarmUp(HPL_T_test* TEST,
                  p0->A0,
                  p0->lda0);
 
+  CHECK_HIP_ERROR(hipDeviceSynchronize());
+
   p0->pcol = p0->grid->mycol;
   HPL_pdfact(p0);
   p0->A -= p0->jb * static_cast<size_t>(p0->lda);
@@ -330,6 +332,8 @@ int HPL_WarmUp(HPL_T_test* TEST,
                  p1->lda,
                  p1->A0,
                  p1->lda0);
+
+  CHECK_HIP_ERROR(hipDeviceSynchronize());
 
   p1->pcol = p1->grid->mycol;
   HPL_pdfact(p1);
