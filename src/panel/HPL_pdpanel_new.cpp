@@ -201,6 +201,18 @@ int HPL_pdpanel_new(HPL_T_test*   TEST,
     return HPL_FAILURE;
   }
 
+  // Host side copy of panel factorization space
+  numbytes = (A->ld * nb + nb * nb + lpiv) * sizeof(double);
+  if(hostMalloc(GRID, (void**)&(PANEL->hA0), numbytes, info) != HPL_SUCCESS) {
+    HPL_pwarn(TEST->outfp,
+              __LINE__,
+              "HPL_pdpanel_new",
+              "[%d,%d] Host memory allocation failed for Panel workspace. Test Skiped.",
+              info[1],
+              info[2]);
+    return HPL_FAILURE;
+  }
+
   /*
    * If nprow is 1, we just allocate an array of NB integers to store the
    * pivot IDs during factoring, and a scratch array of mp integers.
@@ -241,6 +253,22 @@ int HPL_pdpanel_new(HPL_T_test*   TEST,
               info[1],
               info[2]);
     return HPL_FAILURE;
+  }
+
+  {
+    /*First touch*/
+    for(int j = 0; j < nb; ++j) {
+      for(int i = 0; i < A->ld; i++) {
+        PANEL->hA0[i + static_cast<size_t>(A->ld) * j] = 0.0;
+      }
+    }
+
+    double *hL1 = PANEL->hA0 + nb * static_cast<size_t>(A->ld);
+    for(int j = 0; j < nb; ++j) {
+      for(int i = 0; i < nb; i++) {
+        hL1[i + nb * j] = 0.0;
+      }
+    }
   }
 
   return HPL_SUCCESS;

@@ -107,14 +107,14 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
    * Factor and broadcast 0-th panel
    */
   if (mycol == 0) {
-    HPL_dlacpy_gpu(curr->mp,
-                   curr->jb,
-                   curr->A,
-                   curr->lda,
-                   curr->A0,
-                   curr->lda0);
+    HPL_pdpanel_SendToHost(curr);
+    HPL_pdpanel_Wait(curr);
 
     HPL_pdfact(curr);
+
+    HPL_pdpanel_SendToDevice(curr);
+    HPL_pdpanel_swapids(curr);
+    HPL_pdpanel_Wait(curr);
 
     if (myrow == curr->prow) {
       HPL_dlatcpy_gpu(curr->jb,
@@ -125,11 +125,8 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
                       curr->lda);
     }
 
-    // compute swapping info
-    HPL_pdpanel_swapids(curr);
   }
 
-  if(mycol == icurcol) CHECK_HIP_ERROR(hipEventSynchronize(pfactStop));
   HPL_pdpanel_bcast(curr);
 
   // start Ubcast+row swapping for second part of A
@@ -162,16 +159,16 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
   if(GRID->myrow == 0 && mycol == 0) {
     printf("-------------------------------------------------------------------"
            "-------------------------------------------------------------------"
-           "------------------------------\n");
+           "---------------------------------------------\n");
     printf("   %%   | Column    | Step Time (s) ||         DGEMM GFLOPS        "
-           " || pdfact (s) | pmxswp (s) | Lbcast (s) | laswp "
+           " || Panel Copy(s) | pdfact (s) | pmxswp (s) | Lbcast (s) | laswp "
            "(s) | GPU Sync (s) | Step GFLOPS | Overall GFLOPS\n");
     printf("       |           |               |  Small   |  First   | Second  "
-           " |            |            |            |          "
+           " |               |            |            |            |          "
            " |              |             |               \n");
     printf("-------------------------------------------------------------------"
            "-------------------------------------------------------------------"
-           "------------------------------\n");
+           "---------------------------------------------\n");
   }
 #else
   if(GRID->myrow == 0 && mycol == 0) {
@@ -203,16 +200,30 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
       HPL_pdlaswp_end(curr, HPL_LOOK_AHEAD);
       HPL_pdupdate(curr, HPL_LOOK_AHEAD);
 
-      HPL_dlacpy_gpu(next->mp,
-                     next->jb,
-                     next->A,
-                     next->lda,
-                     next->A0,
-                     next->lda0);
+      CHECK_HIP_ERROR(
+          hipStreamWaitEvent(dataStream, update[HPL_LOOK_AHEAD], 0));
+      HPL_pdpanel_SendToHost(next);
+
+      /* Queue up finishing the second section */
+      HPL_pdlaswp_end(curr, HPL_UPD_2);
+      HPL_pdupdate(curr, HPL_UPD_2);
+
+#ifdef HPL_DETAILED_TIMING
+      HPL_ptimer(HPL_TIMING_UPDATE);
+      CHECK_HIP_ERROR(hipEventSynchronize(update[HPL_LOOK_AHEAD]));
+      HPL_ptimer(HPL_TIMING_UPDATE);
+#endif
+
+      // wait for the panel to arrive
+      HPL_pdpanel_Wait(next);
 
       /*Panel factorization FLOP count is (2/3)NB^3 - (1/2)NB^2 - (1/6)NB +
        * (N-i*NB)(NB^2-NB)*/
       HPL_pdfact(next); /* factor current panel */
+
+      HPL_pdpanel_SendToDevice(next);
+      HPL_pdpanel_swapids(next);
+      HPL_pdpanel_Wait(next);
 
       if (myrow == next->prow) {
         HPL_dlatcpy_gpu(next->jb,
@@ -224,15 +235,14 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
       }
 
       // compute swapping info
-      HPL_pdpanel_swapids(next);
+    } else {
+      /* Queue up finishing the second section */
+      HPL_pdlaswp_end(curr, HPL_UPD_2);
+      HPL_pdupdate(curr, HPL_UPD_2);
     }
 
-    /* Queue up finishing the second section */
-    HPL_pdlaswp_end(curr, HPL_UPD_2);
-    HPL_pdupdate(curr, HPL_UPD_2);
 
     /* broadcast current panel */
-    if(mycol == icurcol) CHECK_HIP_ERROR(hipEventSynchronize(pfactStop));
     HPL_pdpanel_bcast(next);
 
     // start Ubcast+row swapping for second part of A
@@ -351,14 +361,12 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
       }
 
       if(curr->nu0) {
-        float pfactTime = 0.;
-        CHECK_HIP_ERROR(hipEventElapsedTime(&pfactTime, pfactStart, pfactStop));
-
-        printf("  %9.3e |  %9.3e |",
-               static_cast<double>(pfactTime)/1000,
+        printf("   %9.3e   |  %9.3e |  %9.3e |",
+               HPL_ptimer_getStep(HPL_TIMING_COPY),
+               HPL_ptimer_getStep(HPL_TIMING_RPFACT),
                HPL_ptimer_getStep(HPL_TIMING_MXSWP));
       } else {
-        printf("            |            |");
+        printf("               |            |            |");
       }
 
       printf("  %9.3e | %9.3e |   %9.3e  |",

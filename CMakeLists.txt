@@ -98,7 +98,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   list(APPEND CMAKE_HOST_FLAGS "-O0;-g")
 else()
   list(APPEND HIP_HIPCC_FLAGS "-O3 -march=native -ffp-contract=fast -ffast-math -funsafe-math-optimizations")
-  list(APPEND CMAKE_HOST_FLAGS "-O3;-march=native")
+  list(APPEND CMAKE_HOST_FLAGS "-O3;-march=native;-Wno-deprecated-declarations")
 endif()
 
 # GPU arch targets

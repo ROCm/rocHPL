@@ -108,9 +108,9 @@ void HPL_pdmxswp(HPL_T_panel* PANEL,
   if(M > 0) {
     lda = PANEL->lda0;
 
-    HPL_dcopy(n0, Mptr(PANEL->A0, II + (int)(WORK[1]), 0, lda), lda, Wmx, 1);
+    HPL_dcopy(n0, Mptr(PANEL->hA0, II + (int)(WORK[1]), 0, lda), lda, Wmx, 1);
     if(myrow == icurrow) {
-      HPL_dcopy(n0, Mptr(PANEL->A0, II, 0, lda), lda, A0, 1);
+      HPL_dcopy(n0, Mptr(PANEL->hA0, II, 0, lda), lda, A0, 1);
     } else {
       for(i = 0; i < n0; i++) A0[i] = HPL_rzero;
     }

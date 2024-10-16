@@ -96,11 +96,6 @@ typedef struct HPL_S_pmat {
   double* W2;
 
   //pfact workspaces
-  int*     loc_workspace;
-  double*  max_workspace;
-  double*  dev_workspace;
-  uint32_t* locks;
-  int32_t* host_flag;
   double*  host_workspace;
 
 } HPL_T_pmat;
