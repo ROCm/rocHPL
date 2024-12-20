@@ -90,8 +90,8 @@ foreach(i ${rochpl_device_source})
 endforeach()
 
 # HIP flags workaround while target_compile_options does not work
-list(APPEND HIP_HIPCC_FLAGS "-Wno-unused-command-line-argument -fPIE -fopenmp")
-list(APPEND CMAKE_HOST_FLAGS "")
+list(APPEND HIP_HIPCC_FLAGS "-Wno-unused-command-line-argument -Wno-deprecated-declarations -fPIE -fopenmp")
+list(APPEND CMAKE_HOST_FLAGS "-Wno-deprecated-declarations")
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   list(APPEND HIP_HIPCC_FLAGS "-g -ggdb")
