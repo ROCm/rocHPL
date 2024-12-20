@@ -16,87 +16,9 @@
 
 #include "hpl.hpp"
 #include <hip/hip_runtime.h>
+#include "hpl_hip_ex.hpp"
 
-
-template<int BLOCKSIZE>
-__device__ inline void maxloc_block_reduce(int &loc,
-                                           double &max,
-                                           int *s_loc,
-                                           double *s_max) {
-  const int t = threadIdx.x;
-
-  s_loc[t] = loc;
-  s_max[t] = max;
-
-  __syncthreads();
-
-  for (int active=BLOCKSIZE/2; active>0;active>>=1) {
-    if (t<active) {
-      if (std::abs(s_max[t+active]) > std::abs(s_max[t])) {
-        s_max[t] = s_max[t+active];
-        s_loc[t] = s_loc[t+active];
-      }
-    }
-    __syncthreads();
-  }
-}
-
-class barrier_t {
-public:
-  __device__
-  barrier_t(uint32_t *_gen, uint32_t *_count, const int _grid_size):
-    gen(_gen),
-    count(_count),
-    grid_size(_grid_size) {}
-
-  __device__
-  void arrive() {
-    //get generation number for this barrier
-    g = __hip_atomic_load(gen, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-
-    //increment counter
-    atomicAdd(count, 1);
-  }
-
-  __device__
-  void wait() {
-    //spin-wait for block 0 to complete unlock
-    while(__hip_atomic_load(gen, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT) == g) {}
-  }
-
-  __device__
-  void arrive_and_wait() {
-    arrive();
-    wait();
-  }
-
-  __device__
-  void leader_sync() {
-    //spin-wait for other block to have arrived
-    while(__hip_atomic_load(count, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT) != grid_size-1) {}
-  }
-
-  __device__
-  void leader_release() {
-    //reset counter
-    __hip_atomic_store(count, 0, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-
-    //Unlock other blocks
-    atomicAdd(gen, 1);
-  }
-
-  __device__
-  void leader_sync_and_release() {
-    leader_sync();
-    leader_release();
-  }
-
-private:
-  uint32_t *gen;
-  uint32_t *count;
-  uint32_t g;
-  int grid_size;
-};
+using namespace hip_ex;
 
 template<int BLOCKSIZE>
 __launch_bounds__(BLOCKSIZE,8)
@@ -112,9 +34,9 @@ __global__ void pdfact(const int M,
                        int      *__restrict__ loc_workspace,
                        double   *__restrict__ max_workspace,
                        double   *__restrict__ dev_workspace,
-                       int32_t  *__restrict__ host_flag,
                        double   *__restrict__ host_workspace,
-                       uint32_t  *__restrict__ locks) {
+                       atomic_ref<int32_t, thread_scope_system> host_flag,
+                       barrier<thread_scope_device> barrier) {
 
   const int t = threadIdx.x;
   const int block = blockIdx.x;
@@ -126,95 +48,96 @@ __global__ void pdfact(const int M,
   int    loc;
   double max;
 
-  barrier_t barrier(locks+0, locks+1, gridDim.x);
-
   //Device workspaces to hold pivoted rows at agent scope
-  double *Amax = dev_workspace + 4;
-  double *Acur = dev_workspace + 4 + NB;
-  double *candidate_rows = dev_workspace + 4 + 2 * NB;
-
+  atomic_ref<double, thread_scope_device> d_max(dev_workspace[0]);
+  atomic_ref<double, thread_scope_device> d_loc(dev_workspace[1]);
+  atomic_ref<double, thread_scope_device> d_row(dev_workspace[3]);
+  atomic_ref<double, thread_scope_device> d_amax(dev_workspace[4 + t]);
+  atomic_ref<double, thread_scope_device> d_acur(dev_workspace[4 + t + NB]);
   double amax, acur;
 
+  //Workspace for agent level pivot candidates
+  double *candidate_rows = dev_workspace + 4 + 2 * NB;
+  atomic_ref<double, thread_scope_device> d_ccur(candidate_rows[t]);
+
+  using arrival_token = hip_ex::barrier<thread_scope_device>::arrival_token;
+  arrival_token bar;
+
+  hip_ex::barrier<thread_scope_block> block_barrier;
+
   if (block==0) {
+    atomic_ref<double, thread_scope_system> h_max(host_workspace[0]);
+    atomic_ref<double, thread_scope_system> h_loc(host_workspace[1]);
+    atomic_ref<double, thread_scope_system> h_row(host_workspace[3]);
+    atomic_ref<double, thread_scope_system> h_amax(host_workspace[4+t]);
+    atomic_ref<double, thread_scope_system> h_acur(host_workspace[4+t+NB]);
+
     //loop through columns
     for (int jj = 0; jj < JB; ++jj) {
       //Wait for all blocks to have completed partial reduction
-      if (t==0) barrier.leader_sync();
-      __syncthreads();
+      if (t==0) while (!barrier.is_last_to_arrive()) {}
+      block_barrier.arrive_and_wait(memory_order_relaxed);
 
       // Complete maxloc reduction
-      loc=-1;
-      max=0.;
-      for (int id=t+1;id<gridDim.x;id+=BLOCKSIZE) {
-        const double r_max = __hip_atomic_load(&max_workspace[id], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-        if (std::abs(r_max) > std::abs(max)) {
-          loc = id;
-          max = r_max;
-        }
-      }
-      maxloc_block_reduce<BLOCKSIZE>(loc, max, s_loc, s_max);
-      loc = s_loc[0]; //block number where local max row resides
-      max = s_max[0];
+      atomic_block_maxloc<BLOCKSIZE>(gridDim.x - 1, max_workspace + 1, s_max, s_loc, max, loc);
+      loc+=1;
 
       if (t<NB) {
         //Read local candidate pivot row out of agent work buffer
-        if (curr) {
-          acur = __hip_atomic_load(&candidate_rows[t],            __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-        }
-        amax = __hip_atomic_load(&candidate_rows[t + loc * NB], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+        atomic_ref<double, thread_scope_device> d_cmax(candidate_rows[t + loc * NB]);
+        amax = d_cmax.load(memory_order_relaxed);
+        if (curr) acur = d_ccur.load(memory_order_relaxed);
 
         //write row into host swap space
-        __hip_atomic_store(&host_workspace[4+t],    amax, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-        if (curr) {
-          __hip_atomic_store(&host_workspace[4+t+NB], acur, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-        }
+        h_amax.store(amax, memory_order_relaxed);
+        if (curr) h_acur.store(acur, memory_order_relaxed);
       }
 
       if(t==0) {
         //Write row number and max val to header
-        loc = __hip_atomic_load(&loc_workspace[loc], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-        __hip_atomic_store(&host_workspace[0], static_cast<double>(max), __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-        __hip_atomic_store(&host_workspace[1], static_cast<double>(loc), __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+        atomic_ref<int, thread_scope_device> d_wloc(loc_workspace[loc]);
+        loc = d_wloc.load(memory_order_relaxed);
+
+        h_max.store(static_cast<double>(max), memory_order_relaxed);
+        h_loc.store(static_cast<double>(loc), memory_order_relaxed);
       }
 
-      __builtin_amdgcn_fence(__ATOMIC_ACQUIRE, "workgroup");
-      __builtin_amdgcn_s_waitcnt(0);
-      __builtin_amdgcn_s_barrier();
+      waitcnt(thread_scope_device);
+      block_barrier.arrive_and_wait(memory_order_relaxed);
 
       if(t==0) {
         //Mark pivot row as found
-        __hip_atomic_store(host_flag, 1, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+        host_flag.store(1, memory_order_relaxed);
 
         //Wait for Host to unlock
-        while (__hip_atomic_load(host_flag, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM) != 0) {}
+        host_flag.wait(1, memory_order_relaxed);
       }
-      __syncthreads();
+      block_barrier.arrive_and_wait(memory_order_relaxed);
 
       if (t<NB) {
         //Read pivot row out of host swap space
-        amax = __hip_atomic_load(&host_workspace[4+t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-        acur = __hip_atomic_load(&host_workspace[4+t+NB], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+        amax = h_amax.load(memory_order_relaxed);
+        acur = h_acur.load(memory_order_relaxed);
 
         //write row into agent work buffer
-        __hip_atomic_store(&Amax[t], amax, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-        __hip_atomic_store(&Acur[t], acur, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+        d_amax.store(amax, memory_order_relaxed);
+        d_acur.store(acur, memory_order_relaxed);
       }
 
       if (t==0) {
-        const double gmax   = __hip_atomic_load(&host_workspace[0], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-        const double srcloc = __hip_atomic_load(&host_workspace[1], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-        const double srcrow = __hip_atomic_load(&host_workspace[3], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-        __hip_atomic_store(&dev_workspace[0], gmax,   __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-        __hip_atomic_store(&dev_workspace[1], srcloc, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-        __hip_atomic_store(&dev_workspace[3], srcrow, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+        const double gmax   = h_max.load(memory_order_relaxed);
+        const double srcloc = h_loc.load(memory_order_relaxed);
+        const double srcrow = h_row.load(memory_order_relaxed);
+        d_max.store(gmax,   memory_order_relaxed);
+        d_loc.store(srcloc, memory_order_relaxed);
+        d_row.store(srcrow, memory_order_relaxed);
       }
 
-      __builtin_amdgcn_fence(__ATOMIC_ACQUIRE, "workgroup");
-      __builtin_amdgcn_s_waitcnt(0);
-      __builtin_amdgcn_s_barrier();
+      waitcnt(thread_scope_device);
+      block_barrier.arrive_and_wait(memory_order_relaxed);
 
-      if (t==0) barrier.leader_release();
-      __syncthreads();
+      //Unblock the other blocks
+      if (t==0) bar = barrier.arrive(memory_order_relaxed);
 
       if (t<NB) {
         L1[t + jj*NB] = amax;
@@ -226,6 +149,11 @@ __global__ void pdfact(const int M,
     const int m = t + BLOCKSIZE * (block-1);
     const bool bcurr = (block==1) && curr;
 
+    atomic_ref<double, thread_scope_device> d_cmax(candidate_rows[t + block * NB]);
+
+    atomic_ref<int,    thread_scope_device> d_wloc(loc_workspace[block]);
+    atomic_ref<double, thread_scope_device> d_wmax(max_workspace[block]);
+
     //pointer to current column
     double *An = A + JJ * LDA;
 
@@ -236,32 +164,27 @@ __global__ void pdfact(const int M,
       loc = m;
       max = An[m];
     }
-    maxloc_block_reduce<BLOCKSIZE>(loc, max, s_loc, s_max);
-    loc = s_loc[0];
-    max = s_max[0];
+    block_maxloc<BLOCKSIZE>(max, loc, s_max, s_loc);
 
     if (t<NB) {
       // Write out to workspace
-      __hip_atomic_store(&candidate_rows[t + block * NB], A[loc + t * LDA], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+      d_cmax.store(A[loc + t * LDA], memory_order_relaxed);
 
       //write top row to workspace
-      if (bcurr) {
-        __hip_atomic_store(&candidate_rows[t], A[0 + t*LDA], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-      }
+      if (bcurr) d_ccur.store(A[0 + t*LDA], memory_order_relaxed);
     }
 
     if (t==0) {
-      __hip_atomic_store(&loc_workspace[block], loc, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-      __hip_atomic_store(&max_workspace[block], max, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+      d_wloc.store(loc, memory_order_relaxed);
+      d_wmax.store(max, memory_order_relaxed);
     }
 
-    __builtin_amdgcn_fence(__ATOMIC_ACQUIRE, "workgroup");
-    __builtin_amdgcn_s_waitcnt(0);
-    __builtin_amdgcn_s_barrier();
+    waitcnt(thread_scope_device);
+    block_barrier.arrive_and_wait(memory_order_relaxed);
 
-    //Signal the first block that the workspace is populated and wait for swap to complete
-    if (t==0) barrier.arrive_and_wait();
-    __syncthreads();
+    //Signal the first block that the workspace is populated and wait for the swap
+    if (t==0) barrier.arrive_and_wait(memory_order_relaxed);
+    block_barrier.arrive_and_wait(memory_order_relaxed);
 
     int ii = 0;
 
@@ -269,9 +192,9 @@ __global__ void pdfact(const int M,
 
     for (int jj = 1; jj < JB; ++jj) {
       // Perform the row swap
-      const double gmax = __hip_atomic_load(&dev_workspace[0], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-      const int srcloc = static_cast<int>(__hip_atomic_load(&dev_workspace[1], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT));
-      const int srcrow = static_cast<int>(__hip_atomic_load(&dev_workspace[3], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT));
+      const double gmax = d_max.load(memory_order_relaxed);
+      const int srcloc  = d_loc.load(memory_order_relaxed);
+      const int srcrow  = d_row.load(memory_order_relaxed);
       const int srcBlock = srcloc/BLOCKSIZE + 1;
 
       //shift down a row
@@ -280,15 +203,14 @@ __global__ void pdfact(const int M,
       double acmax;
       if (t<NB) {
         //Read in the Amax row to LDS
-        acmax = __hip_atomic_load(&Amax[t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+        acmax = d_amax.load(memory_order_relaxed);
         s_Amax[t] = acmax;
 
-
         if (myrow == srcrow && block == srcBlock) {
-          A[srcloc + t*LDA] = __hip_atomic_load(&Acur[t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+          A[srcloc + t*LDA] = d_acur.load(memory_order_relaxed);
         }
       }
-      __syncthreads();
+      block_barrier.arrive_and_wait(memory_order_release);
 
       // Scale column by max value, update next column, and record pivot candidates
       int    loc = -1;
@@ -306,9 +228,7 @@ __global__ void pdfact(const int M,
       }
 
       // Each block does partial reduction to find pivot row
-      maxloc_block_reduce<BLOCKSIZE>(loc, max, s_loc, s_max);
-      loc = s_loc[0];
-      max = s_max[0];
+      block_maxloc<BLOCKSIZE>(max, loc, s_max, s_loc);
 
       if (t<NB) {
         amax = A[loc + t * LDA];
@@ -327,25 +247,22 @@ __global__ void pdfact(const int M,
         }
 
         // Write out to workspace
-        __hip_atomic_store(&candidate_rows[t + block * NB], amax, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+        d_cmax.store(amax, memory_order_relaxed);
 
         // Write top row
-        if (bcurr) {
-          __hip_atomic_store(&candidate_rows[t], acur,  __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-        }
+        if (bcurr) d_ccur.store(acur, memory_order_relaxed);
       }
 
       if (t==0) {
-        __hip_atomic_store(&loc_workspace[block], loc, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-        __hip_atomic_store(&max_workspace[block], max, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+        d_wloc.store(loc, memory_order_relaxed);
+        d_wmax.store(max, memory_order_relaxed);
       }
 
-      __builtin_amdgcn_fence(__ATOMIC_ACQUIRE, "workgroup");
-      __builtin_amdgcn_s_waitcnt(0);
-      __builtin_amdgcn_s_barrier();
+      waitcnt(thread_scope_device);
+      block_barrier.arrive_and_wait(memory_order_relaxed);
 
       //Signal the first block that the workspace is populated
-      if (t==0) barrier.arrive();
+      if (t==0) bar = barrier.arrive(memory_order_relaxed);
 
       //Rank 1 update while the row is exchanged on the host
       if (ii <= t && m < M) {
@@ -357,24 +274,23 @@ __global__ void pdfact(const int M,
       //shift A one column
       An += LDA;
 
-      //Wait for block 0 to complete swap
-      if (t==0) barrier.wait();
-      __syncthreads();
+      if (t==0) barrier.wait(std::move(bar), memory_order_relaxed);
+      block_barrier.arrive_and_wait(memory_order_relaxed);
     }
 
     // Perform final row swap and update
-    const double gmax = __hip_atomic_load(&dev_workspace[0], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-    const int srcloc = static_cast<int>(__hip_atomic_load(&dev_workspace[1], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT));
-    const int srcrow = static_cast<int>(__hip_atomic_load(&dev_workspace[3], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT));
+    const double gmax = d_max.load(memory_order_relaxed);
+    const int srcloc  = d_loc.load(memory_order_relaxed);
+    const int srcrow  = d_row.load(memory_order_relaxed);
     const int srcBlock = srcloc/BLOCKSIZE + 1;
 
     //shift down a row
     if (bcurr) ii++;
 
     if (myrow == srcrow && block == srcBlock && t<NB) {
-      A[srcloc + t*LDA] = __hip_atomic_load(&Acur[t], __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+      A[srcloc + t*LDA] = d_acur.load(memory_order_relaxed);
     }
-    __syncthreads();
+    block_barrier.arrive_and_wait(memory_order_relaxed);
 
     // Scale final column by max value
     if (ii <= t && m < M) {
@@ -419,6 +335,11 @@ void HPL_pdpanrlT_device(HPL_T_panel* PANEL,
 
   constexpr int BLOCKSIZE=1024;
 
+  barrier<thread_scope_device> barrier(mat->barrier_space, (M+BLOCKSIZE-1)/BLOCKSIZE + 1);
+
+  atomic_ref<int32_t, thread_scope_system> host_flag(mat->host_flag[0]);
+  host_flag.store(0, memory_order_relaxed);
+
   if (M>0) {
     int m = M;
     int n = N;
@@ -437,9 +358,9 @@ void HPL_pdpanrlT_device(HPL_T_panel* PANEL,
                       &(mat->loc_workspace),
                       &(mat->max_workspace),
                       &(mat->dev_workspace),
-                      &(mat->host_flag),
                       &(mat->host_workspace),
-                      &(mat->locks)};
+                      &host_flag,
+                      &barrier};
     CHECK_HIP_ERROR(hipLaunchCooperativeKernel(pdfact<BLOCKSIZE>,
                                                dim3((M+BLOCKSIZE-1)/BLOCKSIZE + 1),
                                                dim3(BLOCKSIZE),
@@ -456,10 +377,8 @@ void HPL_pdpanrlT_device(HPL_T_panel* PANEL,
   double *Wwork = WORK + cnt0;
 
   for (int i = 0; i < N; i++) {
-    if (M>0) {
-      /*Wait for host_flag to update from GPU*/
-      while (__atomic_load_n(mat->host_flag, __ATOMIC_ACQUIRE) != 1) { }
-    }
+    /*Wait for host_flag to update from GPU*/
+    if (M>0) host_flag.wait(0, memory_order_acquire);
 
 #ifdef HPL_DETAILED_TIMING
     HPL_ptimer(HPL_TIMING_MXSWP);
@@ -491,10 +410,8 @@ void HPL_pdpanrlT_device(HPL_T_panel* PANEL,
 
     (PANEL->ipiv)[ICOFF+i] = (int)WORK[2];
 
-    if (M>0) {
-      /*Signal GPU*/
-      __atomic_store_n(mat->host_flag, 0, __ATOMIC_RELEASE);
-    }
+    /*Signal GPU*/
+    if (M>0) host_flag.store(0, memory_order_release);
   }
 
 #ifdef HPL_DETAILED_TIMING

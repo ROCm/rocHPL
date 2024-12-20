@@ -129,7 +129,7 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   mat->loc_workspace = nullptr;
   mat->max_workspace = nullptr;
   mat->dev_workspace = nullptr;
-  mat->locks = nullptr;
+  mat->barrier_space = nullptr;
   mat->host_flag = nullptr;
   mat->host_workspace = nullptr;
 
@@ -283,7 +283,7 @@ int HPL_pdmatgen(HPL_T_test* TEST,
 
   numbytes = sizeof(uint32_t) * 2;
   totalDeviceMem += numbytes;
-  if(deviceMalloc(GRID, (void**)&(mat->locks), numbytes, info) != HPL_SUCCESS) {
+  if(deviceMalloc(GRID, (void**)&(mat->barrier_space), numbytes, info) != HPL_SUCCESS) {
     HPL_pwarn(TEST->outfp,
               __LINE__,
               "HPL_pdmatgen",
@@ -293,8 +293,8 @@ int HPL_pdmatgen(HPL_T_test* TEST,
               ((double)totalDeviceMem) / (1024 * 1024 * 1024));
     return HPL_FAILURE;
   }
-  mat->locks[0] = 0;
-  mat->locks[1] = 0;
+  mat->barrier_space[0] = 0;
+  mat->barrier_space[1] = 0;
 
   /*we need 4 + 4*JB entries of scratch for pdfact */
   numbytes = sizeof(double) * 2 * (4 + 2 * NB);
@@ -453,9 +453,9 @@ if(mat->host_flag) {
     CHECK_HIP_ERROR(hipHostFree(mat->host_workspace));
     mat->host_workspace = nullptr;
   }
-  if(mat->locks) {
-    CHECK_HIP_ERROR(hipFree(mat->locks));
-    mat->locks = nullptr;
+  if(mat->barrier_space) {
+    CHECK_HIP_ERROR(hipFree(mat->barrier_space));
+    mat->barrier_space = nullptr;
   }
   if(mat->dev_workspace) {
     CHECK_HIP_ERROR(hipFree(mat->dev_workspace));

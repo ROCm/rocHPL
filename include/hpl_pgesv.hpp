@@ -99,7 +99,7 @@ typedef struct HPL_S_pmat {
   int*     loc_workspace;
   double*  max_workspace;
   double*  dev_workspace;
-  uint32_t* locks;
+  uint32_t* barrier_space;
   int32_t* host_flag;
   double*  host_workspace;
 
