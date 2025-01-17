@@ -93,9 +93,9 @@ void HPL_pdpanrlT(HPL_T_panel* PANEL,
 #ifdef HPL_DETAILED_TIMING
   if(thread_rank == 0) HPL_ptimer(HPL_TIMING_PFACT);
 #endif
-  A    = PANEL->A;
-  lda  = PANEL->lda;
-  L1   = PANEL->L1;
+  A    = PANEL->hA0;
+  lda  = PANEL->lda0;
+  L1   = PANEL->hL1;
   n0   = PANEL->jb;
   curr = (int)(PANEL->grid->myrow == PANEL->prow);
 

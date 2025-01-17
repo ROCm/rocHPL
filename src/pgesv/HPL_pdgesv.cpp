@@ -47,19 +47,14 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
 
   if(A->n <= 0) return;
 
-  A->info = 0;
-
-  HPL_T_panel * p, **panel = NULL;
   HPL_T_UPD_FUN HPL_pdupdate;
-  int N, icurcol = 0, j, jb, jj = 0, jstart, k, mycol, n, nb, nn, npcol, nq,
-         tag = MSGID_BEGIN_FACT, test;
+  int N, icurcol = 0, j, jb, jj = 0, jstart, k, mycol, myrow, n, nb, nn, npcol, nq,
+         tag = MSGID_BEGIN_FACT;
 #ifdef HPL_PROGRESS_REPORT
   double start_time, time, step_time, gflops, step_gflops;
 #endif
 
-  // depth        = ALGO->depth;
-  const int depth = 1; // NC: Hardcoded now
-
+  myrow        = GRID->myrow;
   mycol        = GRID->mycol;
   npcol        = GRID->npcol;
   HPL_pdupdate = ALGO->upfun;
@@ -72,23 +67,19 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
   start_time = HPL_ptimer_walltime();
 #endif
 
+  HPL_T_panel* curr = &(A->panel[0]);
+  HPL_T_panel* next = &(A->panel[1]);
+
   /*
-   * Allocate a panel list of length depth + 1 (depth >= 1)
-   */
-  panel = (HPL_T_panel**)malloc((size_t)(depth + 1) * sizeof(HPL_T_panel*));
-  if(panel == NULL) {
-    HPL_pabort(__LINE__, "HPL_pdgesvK2", "Memory allocation failed");
-  }
-  /*
-   * Create and initialize the first panel
+   * initialize the first panel
    */
   nq     = HPL_numroc(N + 1, nb, nb, mycol, 0, npcol);
   nn     = N;
   jstart = 0;
 
   jb = Mmin(nn, nb);
-  HPL_pdpanel_new(
-      GRID, ALGO, nn, nn + 1, jb, A, jstart, jstart, tag, &panel[0]);
+  HPL_pdpanel_init(
+      GRID, ALGO, nn, nn + 1, jb, A, jstart, jstart, tag, curr);
   nn -= jb;
   jstart += jb;
   if(mycol == icurcol) {
@@ -99,10 +90,10 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
   tag     = MNxtMgid(tag, MSGID_BEGIN_FACT, MSGID_END_FACT);
 
   /*
-   * Create second panel
+   * initialize second panel
    */
-  HPL_pdpanel_new(
-      GRID, ALGO, nn, nn + 1, Mmin(nn, nb), A, jstart, jstart, tag, &panel[1]);
+  HPL_pdpanel_init(
+      GRID, ALGO, nn, nn + 1, Mmin(nn, nb), A, jstart, jstart, tag, next);
   tag = MNxtMgid(tag, MSGID_BEGIN_FACT, MSGID_END_FACT);
 
   /*
@@ -113,35 +104,46 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
   /*
    * Factor and broadcast 0-th panel
    */
-  HPL_pdpanel_SendToHost(panel[0]);
-  HPL_pdpanel_Wait(panel[0]);
+  if (mycol == 0) {
+    HPL_pdpanel_SendToHost(curr);
+    HPL_pdpanel_Wait(curr);
 
-  HPL_pdfact(panel[0]);
+    HPL_pdfact(curr);
 
-  // send the panel back to device before bcast
-  HPL_pdpanel_SendToDevice(panel[0]);
-  HPL_pdpanel_Wait(panel[0]);
+    HPL_pdpanel_SendToDevice(curr);
+    HPL_pdpanel_swapids(curr);
+    HPL_pdpanel_Wait(curr);
 
-  HPL_pdpanel_bcast(panel[0]);
+    if (myrow == curr->prow) {
+      HPL_dlatcpy_gpu(curr->jb,
+                      curr->jb,
+                      curr->L1,
+                      curr->jb,
+                      Mptr(curr->A, 0, -curr->jb, curr->lda),
+                      curr->lda);
+    }
+  }
+
+  HPL_pdpanel_bcast(curr);
 
   // start Ubcast+row swapping for second part of A
-  HPL_pdlaswp_start(panel[0], HPL_UPD_2);
+  HPL_pdlaswp_start(curr, HPL_UPD_2);
 
   if(mycol == icurcol) {
     // start Ubcast+row swapping for look ahead
-    HPL_pdlaswp_start(panel[0], HPL_LOOK_AHEAD);
+    HPL_pdlaswp_start(curr, HPL_LOOK_AHEAD);
   }
 
   // start Ubcast+row swapping for first part of A
-  HPL_pdlaswp_start(panel[0], HPL_UPD_1);
+  HPL_pdlaswp_start(curr, HPL_UPD_1);
 
   // Ubcast+row swaps for second part of A
-  HPL_pdlaswp_exchange(panel[0], HPL_UPD_2);
+  HPL_pdlaswp_exchange(curr, HPL_UPD_2);
 
   if(mycol == icurcol) {
     // Ubcast+row swaps for look ahead
     // nn = HPL_numrocI(jb, j, nb, nb, mycol, 0, npcol);
-    HPL_pdlaswp_exchange(panel[0], HPL_LOOK_AHEAD);
+    HPL_pdlaswp_exchange(curr, HPL_LOOK_AHEAD);
   }
 
   double stepStart, stepEnd;
@@ -188,22 +190,20 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
      * Initialize current panel - Finish latest update, Factor and broadcast
      * current panel
      */
-    (void)HPL_pdpanel_free(panel[1]);
-    HPL_pdpanel_init(GRID, ALGO, n, n + 1, jb, A, j, j, tag, panel[1]);
+    HPL_pdpanel_init(GRID, ALGO, n, n + 1, jb, A, j, j, tag, next);
 
     if(mycol == icurcol) {
       /* update look ahead */
-      HPL_pdlaswp_end(panel[0], HPL_LOOK_AHEAD);
-      HPL_pdupdate(panel[0], HPL_LOOK_AHEAD);
+      HPL_pdlaswp_end(curr, HPL_LOOK_AHEAD);
+      HPL_pdupdate(curr, HPL_LOOK_AHEAD);
 
-      // when the look ahead update is finished, copy back the current panel
       CHECK_HIP_ERROR(
           hipStreamWaitEvent(dataStream, update[HPL_LOOK_AHEAD], 0));
-      HPL_pdpanel_SendToHost(panel[1]);
+      HPL_pdpanel_SendToHost(next);
 
       /* Queue up finishing the second section */
-      HPL_pdlaswp_end(panel[0], HPL_UPD_2);
-      HPL_pdupdate(panel[0], HPL_UPD_2);
+      HPL_pdlaswp_end(curr, HPL_UPD_2);
+      HPL_pdupdate(curr, HPL_UPD_2);
 
 #ifdef HPL_DETAILED_TIMING
       HPL_ptimer(HPL_TIMING_UPDATE);
@@ -212,48 +212,46 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
 #endif
 
       // wait for the panel to arrive
-      HPL_pdpanel_Wait(panel[0]);
-
-#ifdef HPL_PROGRESS_REPORT
-#ifdef HPL_DETAILED_TIMING
-      const int curr = (panel[0]->grid->myrow == panel[0]->prow ? 1 : 0);
-      const int mp   = panel[0]->mp - (curr != 0 ? jb : 0);
-
-      // compute the GFLOPs of the look ahead update DGEMM
-      CHECK_HIP_ERROR(hipEventElapsedTime(&smallDgemmTime,
-                                          dgemmStart[HPL_LOOK_AHEAD],
-                                          dgemmStop[HPL_LOOK_AHEAD]));
-      smallDgemmGflops =
-          (2.0 * mp * jb * jb) / (1000.0 * 1000.0 * smallDgemmTime);
-#endif
-#endif
+      HPL_pdpanel_Wait(next);
 
       /*Panel factorization FLOP count is (2/3)NB^3 - (1/2)NB^2 - (1/6)NB +
        * (N-i*NB)(NB^2-NB)*/
-      HPL_pdfact(panel[1]); /* factor current panel */
+      HPL_pdfact(next); /* factor current panel */
 
-      // send the panel back to device before bcast
-      HPL_pdpanel_SendToDevice(panel[1]);
-      HPL_pdpanel_Wait(panel[0]);
+      HPL_pdpanel_SendToDevice(next);
+      HPL_pdpanel_swapids(next);
+      HPL_pdpanel_Wait(next);
+
+      if (myrow == next->prow) {
+        HPL_dlatcpy_gpu(next->jb,
+                        next->jb,
+                        next->L1,
+                        next->jb,
+                        Mptr(next->A, 0, -next->jb, next->lda),
+                        next->lda);
+      }
+
+      // compute swapping info
     } else {
       /* Queue up finishing the second section */
-      HPL_pdlaswp_end(panel[0], HPL_UPD_2);
-      HPL_pdupdate(panel[0], HPL_UPD_2);
+      HPL_pdlaswp_end(curr, HPL_UPD_2);
+      HPL_pdupdate(curr, HPL_UPD_2);
     }
 
+
     /* broadcast current panel */
-    HPL_pdpanel_bcast(panel[1]);
+    HPL_pdpanel_bcast(next);
 
     // start Ubcast+row swapping for second part of A
-    HPL_pdlaswp_start(panel[1], HPL_UPD_2);
+    HPL_pdlaswp_start(next, HPL_UPD_2);
 
     // while the second section is updating, exchange the rows from the first
     // section
-    HPL_pdlaswp_exchange(panel[0], HPL_UPD_1);
+    HPL_pdlaswp_exchange(curr, HPL_UPD_1);
 
     /* Queue up finishing the first section */
-    HPL_pdlaswp_end(panel[0], HPL_UPD_1);
-    HPL_pdupdate(panel[0], HPL_UPD_1);
+    HPL_pdlaswp_end(curr, HPL_UPD_1);
+    HPL_pdupdate(curr, HPL_UPD_1);
 
     if(mycol == icurcol) {
       jj += jb;
@@ -265,19 +263,19 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
     if(mycol == icurcol) {
       // prep the row swaps for the next look ahead
       //  nn = HPL_numrocI(jb, j+nb, nb, nb, mycol, 0, npcol);
-      HPL_pdlaswp_start(panel[1], HPL_LOOK_AHEAD);
+      HPL_pdlaswp_start(next, HPL_LOOK_AHEAD);
 
       // start Ubcast+row swapping for first part of A
-      HPL_pdlaswp_start(panel[1], HPL_UPD_1);
+      HPL_pdlaswp_start(next, HPL_UPD_1);
 
-      HPL_pdlaswp_exchange(panel[1], HPL_UPD_2);
+      HPL_pdlaswp_exchange(next, HPL_UPD_2);
 
-      HPL_pdlaswp_exchange(panel[1], HPL_LOOK_AHEAD);
+      HPL_pdlaswp_exchange(next, HPL_LOOK_AHEAD);
     } else {
       // start Ubcast+row swapping for first part of A
-      HPL_pdlaswp_start(panel[1], HPL_UPD_1);
+      HPL_pdlaswp_start(next, HPL_UPD_1);
 
-      HPL_pdlaswp_exchange(panel[1], HPL_UPD_2);
+      HPL_pdlaswp_exchange(next, HPL_UPD_2);
     }
 
     // wait here for the updates to compete
@@ -293,21 +291,30 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
 
 #ifdef HPL_PROGRESS_REPORT
 #ifdef HPL_DETAILED_TIMING
-    const int curr = (panel[0]->grid->myrow == panel[0]->prow ? 1 : 0);
-    const int mp   = panel[0]->mp - (curr != 0 ? jb : 0);
+    const int icurr = (curr->grid->myrow == curr->prow ? 1 : 0);
+    const int mp   = curr->mp - (icurr != 0 ? jb : 0);
+
+    if(curr->nu0) {
+      // compute the GFLOPs of the look ahead update DGEMM
+      CHECK_HIP_ERROR(hipEventElapsedTime(&smallDgemmTime,
+                                          dgemmStart[HPL_LOOK_AHEAD],
+                                          dgemmStop[HPL_LOOK_AHEAD]));
+      smallDgemmGflops =
+          (2.0 * mp * jb * jb) / (1000.0 * 1000.0 * smallDgemmTime);
+    }
 
     largeDgemm1Time = 0.0;
     largeDgemm2Time = 0.0;
-    if(panel[0]->nu1) {
+    if(curr->nu1) {
       CHECK_HIP_ERROR(hipEventElapsedTime(
           &largeDgemm1Time, dgemmStart[HPL_UPD_1], dgemmStop[HPL_UPD_1]));
-      largeDgemm1Gflops = (2.0 * mp * jb * (panel[0]->nu1)) /
+      largeDgemm1Gflops = (2.0 * mp * jb * (curr->nu1)) /
                           (1000.0 * 1000.0 * (largeDgemm1Time));
     }
-    if(panel[0]->nu2) {
+    if(curr->nu2) {
       CHECK_HIP_ERROR(hipEventElapsedTime(
           &largeDgemm2Time, dgemmStart[HPL_UPD_2], dgemmStop[HPL_UPD_2]));
-      largeDgemm2Gflops = (2.0 * mp * jb * (panel[0]->nu2)) /
+      largeDgemm2Gflops = (2.0 * mp * jb * (curr->nu2)) /
                           (1000.0 * 1000.0 * (largeDgemm2Time));
     }
 #endif
@@ -333,24 +340,24 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
       printf("   %9.7f  |", stepEnd - stepStart);
 
 #ifdef HPL_DETAILED_TIMING
-      if(panel[0]->nu0) {
+      if(curr->nu0) {
         printf(" %9.3e|", smallDgemmGflops);
       } else {
         printf("          |");
       }
-      if(panel[0]->nu2) {
+      if(curr->nu2) {
         printf(" %9.3e|", largeDgemm2Gflops);
       } else {
         printf("          |");
       }
 
-      if(panel[0]->nu1) {
+      if(curr->nu1) {
         printf(" %9.3e|", largeDgemm1Gflops);
       } else {
         printf("          |");
       }
 
-      if(panel[0]->nu0) {
+      if(curr->nu0) {
         printf("   %9.3e   |  %9.3e |  %9.3e |",
                HPL_ptimer_getStep(HPL_TIMING_COPY),
                HPL_ptimer_getStep(HPL_TIMING_RPFACT),
@@ -371,25 +378,18 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
     }
 #endif
 
-    /*
-     * Circular  of the panel pointers:
-     * xtmp = x[0]; for( k=0; k < 1; k++ ) x[k] = x[k+1]; x[d] = xtmp;
-     *
-     * Go to next process row and column - update the message ids for broadcast
-     */
-    p        = panel[0];
-    panel[0] = panel[1];
-    panel[1] = p;
+    std::swap(curr,next);
   }
+
   /*
    * Clean-up: Finish updates - release panels and panel list
    */
   // nn = HPL_numrocI(1, N, nb, nb, mycol, 0, npcol);
-  HPL_pdlaswp_end(panel[0], HPL_LOOK_AHEAD);
-  HPL_pdupdate(panel[0], HPL_LOOK_AHEAD);
+  HPL_pdlaswp_end(curr, HPL_LOOK_AHEAD);
+  HPL_pdupdate(curr, HPL_LOOK_AHEAD);
 
-  HPL_pdlaswp_end(panel[0], HPL_UPD_2);
-  HPL_pdupdate(panel[0], HPL_UPD_2);
+  HPL_pdlaswp_end(curr, HPL_UPD_2);
+  HPL_pdupdate(curr, HPL_UPD_2);
 
 #ifdef HPL_DETAILED_TIMING
   HPL_ptimer(HPL_TIMING_UPDATE);
@@ -399,12 +399,8 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
   HPL_ptimer(HPL_TIMING_UPDATE);
 #endif
 
-  HPL_pdpanel_disp(&panel[0]);
-  HPL_pdpanel_disp(&panel[1]);
-  if(panel) free(panel);
-
   /*
    * Solve upper triangular system
    */
-  if(A->info == 0) HPL_pdtrsv(GRID, A);
+  HPL_pdtrsv(GRID, A);
 }

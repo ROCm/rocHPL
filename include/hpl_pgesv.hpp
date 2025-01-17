@@ -78,17 +78,27 @@ typedef struct HPL_S_palg {
 } HPL_T_palg;
 
 typedef struct HPL_S_pmat {
-  double* dA;   /* pointer to local piece of A */
-  double* dX;   /* pointer to solution vector */
+  double* A;    /* pointer to local piece of A */
+  double* X;    /* pointer to solution vector */
   int     n;    /* global problem size */
   int     nb;   /* blocking factor */
   int     ld;   /* local leading dimension */
   int     mp;   /* local number of rows */
   int     nq;   /* local number of columns */
-  int     info; /* computational flag */
-  double* A;
-  double* W;
-  double* dW;
+
+  HPL_T_panel panel[2];
+
+  //host panel for pdfact
+  double* hA0;
+
+  //row swapping workspaces
+  double* W0;
+  double* W1;
+  double* W2;
+
+  //pfact workspaces
+  double*  host_workspace;
+
 } HPL_T_pmat;
 
 extern hipEvent_t swapStartEvent[HPL_N_UPD], update[HPL_N_UPD];

@@ -108,6 +108,11 @@ void HPL_pdinfo(int    ARGC,
                 int*,
                 double*);
 
+int HPL_pdwarmup(HPL_T_test* TEST,
+                 HPL_T_grid* GRID,
+                 HPL_T_palg* ALGO,
+                 HPL_T_pmat* mat);
+
 void HPL_pdtest(HPL_T_test*, HPL_T_grid*, HPL_T_palg*, const int, const int);
 void HPL_InitGPU(const HPL_T_grid* GRID);
 void HPL_FreeGPU();

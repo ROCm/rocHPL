@@ -95,9 +95,27 @@ void HPL_InitGPU(const HPL_T_grid* GRID) {
   CHECK_HIP_ERROR(hipEventCreate(dgemmStop + HPL_LOOK_AHEAD));
   CHECK_HIP_ERROR(hipEventCreate(dgemmStop + HPL_UPD_1));
   CHECK_HIP_ERROR(hipEventCreate(dgemmStop + HPL_UPD_2));
+
+  /* Create a rocBLAS handle */
+  CHECK_ROCBLAS_ERROR(rocblas_create_handle(&handle));
+  CHECK_ROCBLAS_ERROR(
+      rocblas_set_pointer_mode(handle, rocblas_pointer_mode_host));
+  CHECK_ROCBLAS_ERROR(rocblas_set_stream(handle, computeStream));
+
+  rocblas_initialize();
+
+#ifdef HPL_ROCBLAS_ALLOW_ATOMICS
+  CHECK_ROCBLAS_ERROR(
+      rocblas_set_atomics_mode(handle, rocblas_atomics_allowed));
+#else
+  CHECK_ROCBLAS_ERROR(
+      rocblas_set_atomics_mode(handle, rocblas_atomics_not_allowed));
+#endif
 }
 
 void HPL_FreeGPU() {
+  CHECK_ROCBLAS_ERROR(rocblas_destroy_handle(handle));
+
   CHECK_HIP_ERROR(hipEventDestroy(swapStartEvent[HPL_LOOK_AHEAD]));
   CHECK_HIP_ERROR(hipEventDestroy(swapStartEvent[HPL_UPD_1]));
   CHECK_HIP_ERROR(hipEventDestroy(swapStartEvent[HPL_UPD_2]));

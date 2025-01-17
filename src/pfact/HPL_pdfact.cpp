@@ -90,7 +90,7 @@ void HPL_pdfact(HPL_T_panel* PANEL) {
                        PANEL->mp,
                        jb,
                        0,
-                       PANEL->fWORK,
+                       PANEL->pmat->host_workspace,
                        thread_rank,
                        thread_size,
                        max_value,
@@ -99,8 +99,7 @@ void HPL_pdfact(HPL_T_panel* PANEL) {
 
   roctxRangePop();
 
-  // PANEL->A   = Mptr( PANEL->A, 0, jb, PANEL->lda );
-  PANEL->dA = Mptr(PANEL->dA, 0, jb, PANEL->dlda);
+  PANEL->A = Mptr(PANEL->A, 0, jb, PANEL->lda);
   PANEL->nq -= jb;
   PANEL->jj += jb;
 #ifdef HPL_DETAILED_TIMING

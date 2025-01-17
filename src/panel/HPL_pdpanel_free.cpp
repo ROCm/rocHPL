@@ -33,23 +33,25 @@ int HPL_pdpanel_free(HPL_T_panel* PANEL) {
    * ---------------------------------------------------------------------
    */
 
-  if(PANEL->pmat->info == 0) PANEL->pmat->info = *(PANEL->DINFO);
-
-  if(PANEL->free_work_now == 1) {
-
-    if(PANEL->dLWORK) CHECK_HIP_ERROR(hipFree(PANEL->dLWORK));
-    if(PANEL->dUWORK) CHECK_HIP_ERROR(hipFree(PANEL->dUWORK));
-    if(PANEL->LWORK) CHECK_HIP_ERROR(hipHostFree(PANEL->LWORK));
-    if(PANEL->UWORK) CHECK_HIP_ERROR(hipHostFree(PANEL->UWORK));
-
-    PANEL->max_lwork_size = 0;
-    PANEL->max_uwork_size = 0;
-
-    if(PANEL->IWORK) free(PANEL->IWORK);
-    if(PANEL->fWORK) free(PANEL->fWORK);
-
-    PANEL->max_iwork_size = 0;
-    PANEL->max_fwork_size = 0;
+  if(PANEL->IWORK) {
+    CHECK_HIP_ERROR(hipHostFree(PANEL->IWORK));
+    PANEL->IWORK = nullptr;
+  }
+  if(PANEL->U2) {
+    CHECK_HIP_ERROR(hipFree(PANEL->U2));
+    PANEL->U2 = nullptr;
+  }
+  if(PANEL->U1) {
+    CHECK_HIP_ERROR(hipFree(PANEL->U1));
+    PANEL->U1 = nullptr;
+  }
+  if(PANEL->U0) {
+    CHECK_HIP_ERROR(hipFree(PANEL->U0));
+    PANEL->U0 = nullptr;
+  }
+  if(PANEL->A0) {
+    CHECK_HIP_ERROR(hipFree(PANEL->A0));
+    PANEL->A0 = nullptr;
   }
 
   return (HPL_SUCCESS);

@@ -63,7 +63,7 @@ void HPL_dlocswpN(HPL_T_panel* PANEL,
   myrow  = PANEL->grid->myrow;
   n0     = PANEL->jb;
   int NB = PANEL->nb;
-  lda    = PANEL->lda;
+  lda    = PANEL->lda0;
 
   Wr0     = (Wmx = WORK + 4) + NB;
   Wmx[JJ] = gmax = WORK[0];
@@ -71,7 +71,7 @@ void HPL_dlocswpN(HPL_T_panel* PANEL,
   /*
    * Replicated swap and copy of the current (new) row of A into L1
    */
-  L = Mptr(PANEL->L1, JJ, 0, n0);
+  L = Mptr(PANEL->hL1, JJ, 0, n0);
   /*
    * If the pivot is non-zero ...
    */
@@ -91,7 +91,7 @@ void HPL_dlocswpN(HPL_T_panel* PANEL,
           /*
            * then copy the max row into L1 and locally swap the 2 rows of A.
            */
-          A1 = Mptr(PANEL->A, II, 0, lda);
+          A1 = Mptr(PANEL->hA0, II, 0, lda);
           A2 = Mptr(A1, ilindx, 0, lda);
 
           HPL_dcopy(n0, Wmx, 1, L, n0);
@@ -103,7 +103,7 @@ void HPL_dlocswpN(HPL_T_panel* PANEL,
            * otherwise the current row of  A  is swapped with itself, so just
            * copy the current of A into L1.
            */
-          *Mptr(PANEL->A, II, JJ, lda) = gmax;
+          *Mptr(PANEL->hA0, II, JJ, lda) = gmax;
 
           HPL_dcopy(n0, Wmx, 1, L, n0);
         }
@@ -113,7 +113,7 @@ void HPL_dlocswpN(HPL_T_panel* PANEL,
          * otherwise, the row to be swapped with the current row of A is in Wmx,
          * so copy Wmx into L1 and A.
          */
-        A1 = Mptr(PANEL->A, II, 0, lda);
+        A1 = Mptr(PANEL->hA0, II, 0, lda);
 
         HPL_dcopy(n0, Wmx, 1, L, n0);
         HPL_dcopy(n0, Wmx, 1, A1, lda);
@@ -130,7 +130,7 @@ void HPL_dlocswpN(HPL_T_panel* PANEL,
        * and if I own the max row, overwrite it with the current row Wr0.
        */
       if(myrow == (int)(WORK[3])) {
-        A2 = Mptr(PANEL->A, II + (size_t)(WORK[1]), 0, lda);
+        A2 = Mptr(PANEL->hA0, II + (size_t)(WORK[1]), 0, lda);
 
         HPL_dcopy(n0, Wr0, 1, A2, lda);
       }
@@ -141,10 +141,5 @@ void HPL_dlocswpN(HPL_T_panel* PANEL,
      * the current row Wr0 into L1. The matrix is singular.
      */
     HPL_dcopy(n0, Wr0, 1, L, n0);
-
-    /*
-     * set INFO.
-     */
-    if(*(PANEL->DINFO) == 0.0) *(PANEL->DINFO) = (double)(PANEL->ia + JJ + 1);
   }
 }
