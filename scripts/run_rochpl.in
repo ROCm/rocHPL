@@ -352,6 +352,84 @@ if [[ "$platform" == "BardPeak" || "$platform" == "HPE_CRAY_EX235A" ]]; then
     done
   fi
 
+elif [[ "$platform" == "ParryPeak" || "$platform" == "Sh54p" || "$platform" == "HPE_CRAY_EX255a" ]]; then
+    # Special core mapping for ParryPeak
+
+    if [[ $globalRank == 0 ]]; then
+      echo "Using ParryPeak GPU bindings"
+    fi
+
+    if [[ $(rocm-smi | grep SPX) ]]; then
+
+      # Sanity check
+      if [[ $size -gt 4 ]]; then
+        echo "Unsupported number of ranks on ParryPeak platform; aborting";
+        exit 1
+      fi
+
+      # GPU0 cores="0-23"
+      # GPU1 cores="24-47"
+      # GPU2 cores="48-71"
+      # GPU3 cores="72-95"
+
+      root_cores=(0 24 48 72)
+      num_cores=24
+
+    elif [[ $(rocm-smi | grep TPX) ]]; then
+
+      # Sanity check
+      if [[ $size -gt 12 ]]; then
+        echo "Unsupported number of ranks on ParryPeak platform; aborting";
+        exit 1
+      fi
+
+      # GPU0 cores="0-8"
+      # GPU1 cores="8-15"
+      # ...
+      # GPU10 cores="80-87"
+      # GPU11 cores="88-95"
+
+      root_cores=(0 8 16 24 32 40 48 56 64 72 80 88)
+      num_cores=8
+
+    elif [[ $(rocm-smi | grep CPX) ]]; then
+
+      # Sanity check
+      if [[ $size -gt 24 ]]; then
+        echo "Unsupported number of ranks on ParryPeak platform; aborting";
+        exit 1
+      fi
+
+      # GPU0 cores="0-3"
+      # GPU1 cores="4-7"
+      # ...
+      # GPU22 cores="88-91"
+      # GPU23 cores="92-95"
+
+      root_cores=(0 4 8 12 16 20 24 28 32 36 40 44 48 52 56 60 64 68 72 76 80 84 88 92)
+      num_cores=4
+
+    else
+      echo "Unable to determine partitioning mode on ParryPeak platform; aborting";
+      exit 1
+    fi
+
+    mygpu=$((myq*p+myp))
+
+    root_core=${root_cores[mygpu]}
+
+    # First omp place is the root core
+    omp_places="{$root_core}"
+
+    # First assign the socket
+    for i in $(seq $((root_core+1)) $((root_core+num_cores-1)))
+    do
+      omp_places+=",{$i}"
+    done
+    omp_num_threads=$num_cores
+
+    places="{$root_core-$((root_core+num_cores-1))}"
+
 else
   # Default core mapping
   root_core=$((myp*row_stride + myq*col_stride))
