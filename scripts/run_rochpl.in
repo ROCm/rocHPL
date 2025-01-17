@@ -361,11 +361,7 @@ if [[ "$platform" == "BardPeak" || "$platform" == "HPE_CRAY_EX235A" ]]; then
 elif [[ "$platform" == "ParryPeak" || "$platform" == "Sh54p" || "$platform" == "HPE_CRAY_EX255a" ]]; then
     # Special core mapping for ParryPeak
 
-    if [[ $globalRank == 0 ]]; then
-      echo "Using ParryPeak GPU bindings"
-    fi
-
-    if [[ $(rocm-smi | grep SPX) ]]; then
+    if [[ $(${rocm_dir}/bin/rocm-smi | grep SPX) ]]; then
 
       # Sanity check
       if [[ $size -gt 4 ]]; then
@@ -381,7 +377,7 @@ elif [[ "$platform" == "ParryPeak" || "$platform" == "Sh54p" || "$platform" == "
       root_cores=(0 24 48 72)
       num_cores=24
 
-    elif [[ $(rocm-smi | grep TPX) ]]; then
+    elif [[ $(${rocm_dir}/bin/rocm-smi | grep TPX) ]]; then
 
       # Sanity check
       if [[ $size -gt 12 ]]; then
@@ -398,7 +394,7 @@ elif [[ "$platform" == "ParryPeak" || "$platform" == "Sh54p" || "$platform" == "
       root_cores=(0 8 16 24 32 40 48 56 64 72 80 88)
       num_cores=8
 
-    elif [[ $(rocm-smi | grep CPX) ]]; then
+    elif [[ $(${rocm_dir}/bin/rocm-smi | grep CPX) ]]; then
 
       # Sanity check
       if [[ $size -gt 24 ]]; then
