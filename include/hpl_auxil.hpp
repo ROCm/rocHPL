@@ -69,6 +69,13 @@ void HPL_dlatcpy(const int,
                  double*,
                  const int);
 
+void HPL_dlacpy_gpu(const int,
+                    const int,
+                    const double*,
+                    const int,
+                    double*,
+                    const int);
+
 void HPL_dlatcpy_gpu(const int,
                      const int,
                      const double*,

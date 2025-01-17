@@ -199,6 +199,8 @@ int main(int ARGC, char** ARGV) {
                       algo.upfun = HPL_pdupdateTT;
                     }
 
+                    algo.L1notran = L1notran;
+                    algo.Unotran  = Unotran;
                     algo.fswap = fswap;
                     algo.fsthr = tswap;
                     algo.equil = equil;

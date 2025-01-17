@@ -15,6 +15,7 @@
  */
 
 #include <limits>
+#include <cinttypes>
 #include "hpl.hpp"
 
 void HPL_pdtest(HPL_T_test* TEST,
@@ -475,6 +476,8 @@ void HPL_pdtest(HPL_T_test* TEST,
       }
 
 #ifdef HPL_PROGRESS_REPORT
+      printf("Residual value = %.15f (0x%" PRIx64 ")\n",
+             resid1, reinterpret_cast<uint64_t&>(resid1));
       if(resid1 < TEST->thrsh)
         printf("Residual Check: PASSED \n");
       else

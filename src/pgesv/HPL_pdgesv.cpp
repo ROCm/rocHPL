@@ -113,15 +113,7 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
     HPL_pdpanel_SendToDevice(curr);
     HPL_pdpanel_swapids(curr);
     HPL_pdpanel_Wait(curr);
-
-    if (myrow == curr->prow) {
-      HPL_dlatcpy_gpu(curr->jb,
-                      curr->jb,
-                      curr->L1,
-                      curr->jb,
-                      Mptr(curr->A, 0, -curr->jb, curr->lda),
-                      curr->lda);
-    }
+    HPL_pdpanel_copyL1(curr);
   }
 
   HPL_pdpanel_bcast(curr);
@@ -221,15 +213,7 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
       HPL_pdpanel_SendToDevice(next);
       HPL_pdpanel_swapids(next);
       HPL_pdpanel_Wait(next);
-
-      if (myrow == next->prow) {
-        HPL_dlatcpy_gpu(next->jb,
-                        next->jb,
-                        next->L1,
-                        next->jb,
-                        Mptr(next->A, 0, -next->jb, next->lda),
-                        next->lda);
-      }
+      HPL_pdpanel_copyL1(next);
 
       // compute swapping info
     } else {

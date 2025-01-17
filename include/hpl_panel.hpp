@@ -106,6 +106,7 @@ int  HPL_pdpanel_free(HPL_T_panel*);
 void HPL_pdpanel_SendToHost(HPL_T_panel*);
 void HPL_pdpanel_SendToDevice(HPL_T_panel*);
 void HPL_pdpanel_swapids(HPL_T_panel* PANEL);
+void HPL_pdpanel_copyL1(HPL_T_panel* PANEL);
 void HPL_pdpanel_Wait(HPL_T_panel* PANEL);
 int  HPL_pdpanel_bcast(HPL_T_panel*);
 #endif

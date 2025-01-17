@@ -61,21 +61,23 @@ typedef enum {
 typedef void (*HPL_T_UPD_FUN)(HPL_T_panel*, const HPL_T_UPD);
 
 typedef struct HPL_S_palg {
-  HPL_T_TOP     btopo; /* row broadcast topology */
-  int           depth; /* look-ahead depth */
-  int           nbdiv; /* recursive division factor */
-  int           nbmin; /* recursion stopping criterium */
-  HPL_T_FACT    pfact; /* panel fact variant */
-  HPL_T_FACT    rfact; /* recursive fact variant */
-  HPL_T_PFA_FUN pffun; /* panel fact function ptr */
-  HPL_T_RFA_FUN rffun; /* recursive fact function ptr */
-  HPL_T_UPD_FUN upfun; /* update function */
-  HPL_T_SWAP    fswap; /* Swapping algorithm */
-  int           fsthr; /* Swapping threshold */
-  int           equil; /* Equilibration */
-  int           align; /* data alignment constant */
-  double        frac;  /* update split percentage */
-  int           its;   /* iterations */
+  HPL_T_TOP     btopo;     /* row broadcast topology */
+  int           depth;     /* look-ahead depth */
+  int           nbdiv;     /* recursive division factor */
+  int           nbmin;     /* recursion stopping criterium */
+  HPL_T_FACT    pfact;     /* panel fact variant */
+  HPL_T_FACT    rfact;     /* recursive fact variant */
+  HPL_T_PFA_FUN pffun;     /* panel fact function ptr */
+  HPL_T_RFA_FUN rffun;     /* recursive fact function ptr */
+  HPL_T_UPD_FUN upfun;     /* update function */
+  HPL_T_SWAP    fswap;     /* Swapping algorithm */
+  int           fsthr;     /* Swapping threshold */
+  int           equil;     /* Equilibration */
+  int           L1notran;  /* L1 (no)-transpose */
+  int           Unotran;   /* U (no)-transpose */
+  int           align;     /* data alignment constant */
+  double        frac;      /* update split percentage */
+  int           its;       /* iterations */
 } HPL_T_palg;
 
 typedef struct HPL_S_pmat {
