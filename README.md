@@ -33,7 +33,7 @@ cd rocHPL
 #    --detailed-timing    - Record detailed timers during HPL run (Default: true)
 ./install.sh
 ```
-By default, [BLIS] v3.1, [UCX] v1.12.1, and [OpenMPI] v4.1.4 will be cloned and built in rocHPL/tpl. After building, the `rochpl` executable is placed in build/rochpl-install.
+By default, [BLIS] v4.2, [UCX] v1.16.0, and [OpenMPI] v5.0.3 will be cloned and built in rocHPL/tpl. After building, the `rochpl` executable is placed in build/rochpl-install.
 
 ## Running rocHPL benchmark application
 rocHPL provides some helpful wrapper scripts. A wrapper script for launching via `mpirun` is provided in `mpirun_rochpl`. This script has two distinct run modes:
@@ -78,13 +78,13 @@ HPL.out      output file name (if any)
 1            # of panel fact
 2            PFACTs (0=left, 1=Crout, 2=Right)
 1            # of recursive stopping criterium
-2            NBMINs (>= 1)
+16           NBMINs (>= 1)
 1            # of panels in recursion
 2            NDIVs
 1            # of recursive panel fact.
 2            RFACTs (0=left, 1=Crout, 2=Right)
 1            # of broadcast
-6            BCASTs (0=1rg,1=1rM,2=2rg,3=2rM,4=Lng,5=LnM,6=Ibcast)
+0            BCASTs (0=1rg,1=1rM,2=2rg,3=2rM,4=Lng,5=LnM,6=Ibcast)
 1            # of lookahead depth
 1            DEPTHs (>=0)
 1            SWAP (0=bin-exch,1=long,2=mix)
@@ -103,11 +103,11 @@ When launching to multiple compute nodes, it can be useful to specify the local 
 ```
 srun -N 2 -n 16 run_rochpl -P 4 -Q 4 -p 2 -q 4 -N 128000 --NB 512
 ```
-or 
+or
 ```
 srun -N 2 -n 16 run_rochpl -P 4 -Q 4 -p 4 -q 2 -N 128000 --NB 512
 ```
-This helps to control where/how much inter-node communication is occuring. 
+This helps to control where/how much inter-node communication is occuring.
 
 ## Performance evaluation
 rocHPL is typically weak scaled so that the global matrix fills all available VRAM on all GPUs. The matrix size N is usually selected to be a multiple of the blocksize NB. Some sample runs on 32GB MI100 GPUs include:
