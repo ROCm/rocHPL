@@ -10,29 +10,6 @@
  */
 #include "hpl.hpp"
 
-static void HPL_unroll_ipiv(const int mp,
-                            const int jb,
-                            int*      ipiv,
-                            int*      upiv,
-                            int*      permU) {
-
-  for(int i = 0; i < mp; i++) { upiv[i] = i; } // initialize ids
-  for(int i = 0; i < jb; i++) {                // swap ids
-    int id        = upiv[i];
-    upiv[i]       = upiv[ipiv[i]];
-    upiv[ipiv[i]] = id;
-  }
-
-  for(int i = 0; i < jb; i++) { permU[i+jb] = -1; }
-
-  int cnt = 0;
-  for(int i = jb; i < mp; i++) { // find swapped ids outside of panel
-    if(upiv[i] < jb) { permU[upiv[i]+jb] = i; }
-  }
-
-  for(int i = 0; i < jb; i++) { permU[i] = upiv[i]; }
-}
-
 void HPL_pdpanel_swapids(HPL_T_panel* PANEL) {
   int jb, i, ml2;
 
@@ -44,17 +21,28 @@ void HPL_pdpanel_swapids(HPL_T_panel* PANEL) {
 
   if(nprow == 1) {
     // unroll pivoting
-    int* ipiv    = PANEL->ipiv;
-
+    int* ipiv  = PANEL->ipiv;
     int* permU = PANEL->ipiv + jb;
-    int* upiv  = PANEL->ipiv + 3 * jb; // scratch space
+    int* ipl   = permU + 2 * jb;
+    int* ipID  = ipl + 1;
 
-    for(i = 0; i < jb; i++) { ipiv[i] -= PANEL->ii; } // shift
-    HPL_unroll_ipiv(PANEL->mp, jb, ipiv, upiv, permU);
+    for(i = 0; i < jb; i++) permU[i + jb] = -1;
+
+    HPL_pipid(PANEL, ipl, ipID);
+
+    for(i = 0; i < *ipl; i += 2) {
+      int src = ipID[i] - PANEL->ia;
+      int dst = ipID[i + 1] - PANEL->ia;
+      if(dst < jb) {
+        permU[dst] = src;
+      } else {
+        permU[src + jb] = dst;
+      }
+    }
 
     int* dpermU = PANEL->dipiv;
 
-    //send pivoting ids to device
+    // send pivoting ids to device
     CHECK_HIP_ERROR(hipMemcpyAsync(dpermU,
                                    permU,
                                    2 * jb * sizeof(int),
