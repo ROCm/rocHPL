@@ -197,6 +197,12 @@ elif [[ -n ${SLURM_LOCALID+x} ]]; then
   size=$SLURM_TASKS_PER_NODE
   #Slurm can return a string like "2(x2),1". Get the first number
   size=$(echo $size | sed -r 's/^([^.]+).*$/\1/; s/^[^0-9]*([0-9]+).*$/\1/')
+elif [[ -n ${FLUX_TASK_LOCAL_ID+x} ]]; then
+  globalRank=$FLUX_TASK_RANK
+  globalSize=$FLUX_JOB_SIZE
+  nnodes=$FLUX_JOB_NNODES
+  rank=$FLUX_TASK_LOCAL_ID
+  size=$((globalSize/nnodes))
 fi
 set -u
 
