@@ -61,13 +61,6 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Build options
-option(HPL_DEBUG "Compile with modest debugging turned on" OFF)
-option(HPL_DETAILED_DEBUG "Compile with voluminous debugging information turned on" OFF)
-option(HPL_DETAILED_TIMING "Enable detail timers" OFF)
-option(HPL_REFERENCE "Build reference mode" OFF)
-option(BUILD_TEST "Build rocHPL single-node test" OFF)
-
 # Dependencies
 include(cmake/Dependencies.cmake)
 
@@ -125,10 +118,6 @@ endforeach()
 hip_add_executable(rochpl ${rochpl_source} ${rochpl_device_source})
 
 target_compile_options(rochpl PRIVATE ${CMAKE_HOST_FLAGS})
-
-if(HPL_DEBUG)
-  target_compile_definitions(rochpl PRIVATE HPL_DEBUG)
-endif()
 
 if(HPL_VERBOSE_PRINT)
   target_compile_definitions(rochpl PRIVATE HPL_VERBOSE_PRINT)
