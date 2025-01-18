@@ -44,11 +44,11 @@
 #define Mmin(a_, b_) (((a_) < (b_)) ? (a_) : (b_))
 #define Mmax(a_, b_) (((a_) > (b_)) ? (a_) : (b_))
 
-#define Mfloor(a, b) (((a) > 0) ? (((a) / (b))) : (-(((-(a)) + (b)-1) / (b))))
-#define Mceil(a, b) (((a) + (b)-1) / (b))
-#define Miceil(a, b) (((a) > 0) ? ((((a) + (b)-1) / (b))) : (-((-(a)) / (b))))
+#define Mfloor(a, b) (((a) > 0) ? (((a) / (b))) : (-(((-(a)) + (b) - 1) / (b))))
+#define Mceil(a, b) (((a) + (b) - 1) / (b))
+#define Miceil(a, b) (((a) > 0) ? ((((a) + (b) - 1) / (b))) : (-((-(a)) / (b))))
 
-#define Mupcase(C) (((C) > 96 && (C) < 123) ? (C)&0xDF : (C))
+#define Mupcase(C) (((C) > 96 && (C) < 123) ? (C) & 0xDF : (C))
 #define Mlowcase(C) (((C) > 64 && (C) < 91) ? (C) | 32 : (C))
 /*
  * Mptr returns a pointer to a_( i_, j_ ) for readability reasons and
@@ -59,7 +59,7 @@
 /*
  * Align pointer
  */
-#define HPL_PTR(ptr_, al_) ((((size_t)(ptr_) + (al_)-1) / (al_)) * (al_))
+#define HPL_PTR(ptr_, al_) ((((size_t)(ptr_) + (al_) - 1) / (al_)) * (al_))
 #endif
 
 #ifdef HPL_TRACING

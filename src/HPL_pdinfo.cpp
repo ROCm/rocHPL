@@ -242,7 +242,7 @@ void HPL_pdinfo(int          ARGC,
   // parse settings
   int         _P = 1, _Q = 1, n = 45312, nb = 384;
   int         _p = -1, _q = -1;
-  int         _it = 1;
+  int         _it           = 1;
   bool        cmdlinerun    = false;
   bool        inputfile     = false;
   double      frac          = 0.6;

@@ -83,15 +83,16 @@
         if((il_) < (inb_))                                                    \
           ig_ = (il_);                                                        \
         else                                                                  \
-          ig_ =                                                               \
-              (il_) + (nb_) * ((nprocs_)-1) * (((il_) - (inb_)) / (nb_) + 1); \
+          ig_ = (il_) +                                                       \
+                (nb_) * ((nprocs_) - 1) * (((il_) - (inb_)) / (nb_) + 1);     \
       } else if((proc_) < (src_)) {                                           \
         ig_ = (il_) + (inb_) +                                                \
-              (nb_) * (((nprocs_)-1) * ((il_) / (nb_)) + (proc_) - (src_)-1 + \
-                       (nprocs_));                                            \
+              (nb_) * (((nprocs_) - 1) * ((il_) / (nb_)) + (proc_) - (src_) - \
+                       1 + (nprocs_));                                        \
       } else {                                                                \
         ig_ = (il_) + (inb_) +                                                \
-              (nb_) * (((nprocs_)-1) * ((il_) / (nb_)) + (proc_) - (src_)-1); \
+              (nb_) *                                                         \
+                  (((nprocs_) - 1) * ((il_) / (nb_)) + (proc_) - (src_) - 1); \
       }                                                                       \
     } else {                                                                  \
       ig_ = (il_);                                                            \
@@ -113,22 +114,22 @@
         src__  = (src_) + nblk__;                                           \
         src__ -= (src__ / (nprocs_)) * (nprocs_);                           \
         inb__ += nblk__ * (nb_);                                            \
-        if((n__ = (n_)-inb__) <= 0) {                                       \
+        if((n__ = (n_) - inb__) <= 0) {                                     \
           if((proc_) == src__)                                              \
             np_ = (n_);                                                     \
           else                                                              \
             np_ = 0;                                                        \
         } else {                                                            \
-          if((mydist__ = (proc_)-src__) < 0) mydist__ += (nprocs_);         \
+          if((mydist__ = (proc_) - src__) < 0) mydist__ += (nprocs_);       \
           nblk__ = n__ / (nb_) + 1;                                         \
           mydist__ -= nblk__ - (quot__ = (nblk__ / (nprocs_))) * (nprocs_); \
           if(mydist__ < 0) {                                                \
             if((proc_) != src__)                                            \
-              np_ = (nb_) + (nb_)*quot__;                                   \
+              np_ = (nb_) + (nb_) * quot__;                                 \
             else                                                            \
-              np_ = inb__ + (nb_)*quot__;                                   \
+              np_ = inb__ + (nb_) * quot__;                                 \
           } else if(mydist__ > 0) {                                         \
-            np_ = (nb_)*quot__;                                             \
+            np_ = (nb_) * quot__;                                           \
           } else {                                                          \
             if((proc_) != src__)                                            \
               np_ = n__ + (nb_) + (nb_) * (quot__ - nblk__);                \
@@ -137,7 +138,7 @@
           }                                                                 \
         }                                                                   \
       } else {                                                              \
-        if((n__ = (n_)-inb__) <= 0) {                                       \
+        if((n__ = (n_) - inb__) <= 0) {                                     \
           if((proc_) == (src_))                                             \
             np_ = (n_);                                                     \
           else                                                              \
@@ -148,11 +149,11 @@
           mydist__ -= nblk__ - (quot__ = (nblk__ / (nprocs_))) * (nprocs_); \
           if(mydist__ < 0) {                                                \
             if((proc_) != (src_))                                           \
-              np_ = (nb_) + (nb_)*quot__;                                   \
+              np_ = (nb_) + (nb_) * quot__;                                 \
             else                                                            \
-              np_ = inb__ + (nb_)*quot__;                                   \
+              np_ = inb__ + (nb_) * quot__;                                 \
           } else if(mydist__ > 0) {                                         \
-            np_ = (nb_)*quot__;                                             \
+            np_ = (nb_) * quot__;                                           \
           } else {                                                          \
             if((proc_) != (src_))                                           \
               np_ = n__ + (nb_) + (nb_) * (quot__ - nblk__);                \
@@ -280,7 +281,7 @@ double HPL_pdlange(const HPL_T_grid*,
                    const int,
                    const double*,
                    const int,
-                         double*);
+                   double*);
 
 #endif
 /*

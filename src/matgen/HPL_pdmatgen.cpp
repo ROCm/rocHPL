@@ -95,10 +95,10 @@ int HPL_pdmatgen(HPL_T_test* TEST,
 
   int rank = GRID->iam;
 
-  mat->n    = N;
-  mat->nb   = NB;
-  mat->mp   = HPL_numroc(N, NB, NB, myrow, 0, nprow);
-  nq        = HPL_numroc(N, NB, NB, mycol, 0, npcol);
+  mat->n  = N;
+  mat->nb = NB;
+  mat->mp = HPL_numroc(N, NB, NB, myrow, 0, nprow);
+  nq      = HPL_numroc(N, NB, NB, mycol, 0, npcol);
   /*
    * Allocate matrix, right-hand-side, and vector solution x. [ A | b ] is
    * N by N+1.  One column is added in every process column for the solve.
@@ -111,8 +111,8 @@ int HPL_pdmatgen(HPL_T_test* TEST,
 
   mat->nq = nq + 1;
 
-  mat->A  = nullptr;
-  mat->X  = nullptr;
+  mat->A = nullptr;
+  mat->X = nullptr;
 
   mat->hA0 = nullptr;
   mat->W0  = nullptr;
@@ -150,11 +150,12 @@ int HPL_pdmatgen(HPL_T_test* TEST,
 
   totalDeviceMem += numbytes;
   if(deviceMalloc(GRID, (void**)&(mat->A), numbytes, info) != HPL_SUCCESS) {
-    if (rank==0) {
+    if(rank == 0) {
       HPL_pwarn(TEST->outfp,
                 __LINE__,
                 "HPL_pdmatgen",
-                "[%d,%d] Device memory allocation failed for A and b. Requested %g GiBs total. Test Skiped.",
+                "[%d,%d] Device memory allocation failed for A and b. "
+                "Requested %g GiBs total. Test Skiped.",
                 info[1],
                 info[2],
                 ((double)totalDeviceMem) / (1024 * 1024 * 1024));
@@ -165,9 +166,9 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   // Allocate panel workspaces
   int ierr = 0;
   ierr = HPL_pdpanel_new(TEST, GRID, ALGO, mat, &mat->panel[0], totalDeviceMem);
-  if (ierr == HPL_FAILURE) return HPL_FAILURE;
+  if(ierr == HPL_FAILURE) return HPL_FAILURE;
   ierr = HPL_pdpanel_new(TEST, GRID, ALGO, mat, &mat->panel[1], totalDeviceMem);
-  if (ierr == HPL_FAILURE) return HPL_FAILURE;
+  if(ierr == HPL_FAILURE) return HPL_FAILURE;
 
   // W spaces
   /*pdtrsv needs two vectors for B and W */
@@ -177,15 +178,16 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   numbytes = (NB * NB) * sizeof(double);
   numbytes = Mmax(2 * Anp * sizeof(double), numbytes);
   numbytes = Mmax(mat->nq * sizeof(double), numbytes);
-  numbytes = Mmax(1024    * sizeof(double), numbytes);
+  numbytes = Mmax(1024 * sizeof(double), numbytes);
 
   totalDeviceMem += numbytes;
   if(deviceMalloc(GRID, (void**)&(mat->W0), numbytes, info) != HPL_SUCCESS) {
-    if (rank==0) {
+    if(rank == 0) {
       HPL_pwarn(TEST->outfp,
                 __LINE__,
                 "HPL_pdmatgen",
-                "[%d,%d] Device memory allocation failed for W0 workspace. Requested %g GiBs total. Test Skiped.",
+                "[%d,%d] Device memory allocation failed for W0 workspace. "
+                "Requested %g GiBs total. Test Skiped.",
                 info[1],
                 info[2],
                 ((double)totalDeviceMem) / (1024 * 1024 * 1024));
@@ -196,8 +198,8 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   int ldu2 = 0;
   if(nprow > 1) {
     const int NSplit = Mmax(0, ((((int)(mat->nq * ALGO->frac)) / NB) * NB));
-    int nu2 = Mmin(mat->nq, NSplit);
-    ldu2 = ((nu2 + 95) / 128) * 128 + 32; /*pad*/
+    int       nu2    = Mmin(mat->nq, NSplit);
+    ldu2             = ((nu2 + 95) / 128) * 128 + 32; /*pad*/
 
     int nu1  = mat->nq - nu2;
     int ldu1 = ((nu1 + 95) / 128) * 128 + 32; /*pad*/
@@ -205,11 +207,12 @@ int HPL_pdmatgen(HPL_T_test* TEST,
     numbytes = (NB * ldu1) * sizeof(double);
     totalDeviceMem += numbytes;
     if(deviceMalloc(GRID, (void**)&(mat->W1), numbytes, info) != HPL_SUCCESS) {
-      if (rank==0) {
+      if(rank == 0) {
         HPL_pwarn(TEST->outfp,
                   __LINE__,
                   "HPL_pdmatgen",
-                  "[%d,%d] Device memory allocation failed for W1 workspace. Requested %g GiBs total. Test Skiped.",
+                  "[%d,%d] Device memory allocation failed for W1 workspace. "
+                  "Requested %g GiBs total. Test Skiped.",
                   info[1],
                   info[2],
                   ((double)totalDeviceMem) / (1024 * 1024 * 1024));
@@ -218,17 +221,18 @@ int HPL_pdmatgen(HPL_T_test* TEST,
     }
   } else {
     int nu2 = mat->nq;
-    ldu2 = ((nu2 + 95) / 128) * 128 + 32; /*pad*/
+    ldu2    = ((nu2 + 95) / 128) * 128 + 32; /*pad*/
   }
 
   numbytes = (NB * ldu2) * sizeof(double);
   totalDeviceMem += numbytes;
   if(deviceMalloc(GRID, (void**)&(mat->W2), numbytes, info) != HPL_SUCCESS) {
-    if (rank==0) {
+    if(rank == 0) {
       HPL_pwarn(TEST->outfp,
                 __LINE__,
                 "HPL_pdmatgen",
-                "[%d,%d] Device memory allocation failed for W2 workspace. Requested %g GiBs total. Test Skiped.",
+                "[%d,%d] Device memory allocation failed for W2 workspace. "
+                "Requested %g GiBs total. Test Skiped.",
                 info[1],
                 info[2],
                 ((double)totalDeviceMem) / (1024 * 1024 * 1024));
@@ -236,16 +240,16 @@ int HPL_pdmatgen(HPL_T_test* TEST,
     return HPL_FAILURE;
   }
 
-
   // seperate space for X vector
   numbytes = mat->nq * sizeof(double);
   totalDeviceMem += numbytes;
   if(deviceMalloc(GRID, (void**)&(mat->X), numbytes, info) != HPL_SUCCESS) {
-    if (rank==0) {
+    if(rank == 0) {
       HPL_pwarn(TEST->outfp,
                 __LINE__,
                 "HPL_pdmatgen",
-                "[%d,%d] Device memory allocation failed for X. Requested %g GiBs total. Test Skiped.",
+                "[%d,%d] Device memory allocation failed for X. Requested %g "
+                "GiBs total. Test Skiped.",
                 info[1],
                 info[2],
                 ((double)totalDeviceMem) / (1024 * 1024 * 1024));
@@ -255,14 +259,16 @@ int HPL_pdmatgen(HPL_T_test* TEST,
 
   /*Need space for a column of panels for pdfact on CPU*/
   /*Holds A0/L2 + L1 + pivoting arrays*/
-  size_t lpiv = ((4 * NB + 1 + nprow + 1) * sizeof(int) + sizeof(double) - 1) / (sizeof(double));
+  size_t lpiv = ((4 * NB + 1 + nprow + 1) * sizeof(int) + sizeof(double) - 1) /
+                (sizeof(double));
   numbytes = sizeof(double) * (mat->ld * NB + NB * NB + lpiv);
   if(hostMalloc(GRID, (void**)&(mat->hA0), numbytes, info) != HPL_SUCCESS) {
-    if (rank==0) {
+    if(rank == 0) {
       HPL_pwarn(TEST->outfp,
                 __LINE__,
                 "HPL_pdmatgen",
-                "[%d,%d] Host memory allocation failed for host panel workspace. Test Skiped.",
+                "[%d,%d] Host memory allocation failed for host panel "
+                "workspace. Test Skiped.",
                 info[1],
                 info[2]);
     }
@@ -271,12 +277,14 @@ int HPL_pdmatgen(HPL_T_test* TEST,
 
   /*we need 4 + 4*JB entries of scratch for pdfact */
   numbytes = sizeof(double) * 2 * (4 + 2 * NB);
-  if(hostMalloc(GRID, (void**)&(mat->host_workspace), numbytes, info) != HPL_SUCCESS) {
-    if (rank==0) {
+  if(hostMalloc(GRID, (void**)&(mat->host_workspace), numbytes, info) !=
+     HPL_SUCCESS) {
+    if(rank == 0) {
       HPL_pwarn(TEST->outfp,
                 __LINE__,
                 "HPL_pdmatgen",
-                "[%d,%d] Host memory allocation failed for pfact workspace. Test Skiped.",
+                "[%d,%d] Host memory allocation failed for pfact workspace. "
+                "Test Skiped.",
                 info[1],
                 info[2]);
     }

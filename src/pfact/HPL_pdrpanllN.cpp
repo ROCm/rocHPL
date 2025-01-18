@@ -147,7 +147,7 @@ void HPL_pdrpanllN(HPL_T_panel* PANEL,
                 n0);
     }
 
-   #pragma omp barrier
+#pragma omp barrier
 
     HPL_dgemm_omp(HplColumnMajor,
                   HplNoTrans,

@@ -31,14 +31,18 @@ __global__ void dlacpy_gpu(const int M,
   const int J = blockIdx.y * TILE_DIM + threadIdx.y;
 
   if(I < M) {
-    if(J +  0 < N)
-      B[I + static_cast<size_t>(LDB) * (J +  0)] = A[I + static_cast<size_t>(LDA) * (J +  0)];
+    if(J + 0 < N)
+      B[I + static_cast<size_t>(LDB) * (J + 0)] =
+          A[I + static_cast<size_t>(LDA) * (J + 0)];
     if(J + 16 < N)
-      B[I + static_cast<size_t>(LDB) * (J + 16)] = A[I + static_cast<size_t>(LDA) * (J + 16)];
+      B[I + static_cast<size_t>(LDB) * (J + 16)] =
+          A[I + static_cast<size_t>(LDA) * (J + 16)];
     if(J + 32 < N)
-      B[I + static_cast<size_t>(LDB) * (J + 32)] = A[I + static_cast<size_t>(LDA) * (J + 32)];
+      B[I + static_cast<size_t>(LDB) * (J + 32)] =
+          A[I + static_cast<size_t>(LDA) * (J + 32)];
     if(J + 48 < N)
-      B[I + static_cast<size_t>(LDB) * (J + 48)] = A[I + static_cast<size_t>(LDA) * (J + 48)];
+      B[I + static_cast<size_t>(LDB) * (J + 48)] =
+          A[I + static_cast<size_t>(LDA) * (J + 48)];
   }
 }
 

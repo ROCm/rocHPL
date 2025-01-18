@@ -25,7 +25,7 @@
 #endif
 
 #undef HPL_USE_COLLECTIVES
-//#define HPL_USE_COLLECTIVES
+// #define HPL_USE_COLLECTIVES
 
 /*
 Enabling atomics will potentially allow more performance optimization

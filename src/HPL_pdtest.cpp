@@ -115,7 +115,7 @@ void HPL_pdtest(HPL_T_test* TEST,
     return;
   }
 
-  for (int it=0;it<ALGO->its;++it) {
+  for(int it = 0; it < ALGO->its; ++it) {
     /*
      * generate matrix and right-hand-side, [ A | b ] which is N by N+1.
      */
@@ -211,11 +211,11 @@ void HPL_pdtest(HPL_T_test* TEST,
                     "HPL_pdgesv() end time   %s\n",
                     ctime(&current_time_end));
       }
-  #ifdef HPL_PROGRESS_REPORT
+#ifdef HPL_PROGRESS_REPORT
       printf("Final Score:    %7.4e GFLOPS \n", Gflops);
-  #endif
+#endif
     }
-  #ifdef HPL_DETAILED_TIMING
+#ifdef HPL_DETAILED_TIMING
     HPL_ptimer_combine(GRID->all_comm,
                        HPL_AMAX_PTIME,
                        HPL_WALL_PTIME,
@@ -290,8 +290,7 @@ void HPL_pdtest(HPL_T_test* TEST,
                     "========================================",
                     "========================================");
     }
-  #endif
-
+#endif
 
     /*
      * Quick return, if I am not interested in checking the computations
@@ -315,10 +314,12 @@ void HPL_pdtest(HPL_T_test* TEST,
     XnormI = HPL_pdlange(GRID, HPL_NORM_1, 1, N, NB, mat.X, 1, mat.W0);
     Xnorm1 = HPL_pdlange(GRID, HPL_NORM_I, 1, N, NB, mat.X, 1, mat.W0);
     /*
-     * If I am in the col that owns b, (1) compute local BnormI, (2) all_reduce to
-     * find the max (in the col). Then (3) broadcast along the rows so that every
-     * process has BnormI. Note that since we use a uniform distribution in
-     * [-0.5,0.5] for the entries of B, it is very likely that BnormI (<=,~) 0.5.
+     * If I am in the col that owns b, (1) compute local BnormI, (2) all_reduce
+     * to find the max (in the col). Then (3) broadcast along the rows so that
+     * every process has BnormI. Note that since we use a uniform distribution
+     * in
+     * [-0.5,0.5] for the entries of B, it is very likely that BnormI (<=,~)
+     * 0.5.
      */
 
     nq   = HPL_numroc(N, NB, NB, mycol, 0, npcol);
@@ -330,7 +331,7 @@ void HPL_pdtest(HPL_T_test* TEST,
 
         // Note: id is in Fortran indexing
         CHECK_HIP_ERROR(hipMemcpy(
-          &BnormI, Bptr + id - 1, 1 * sizeof(double), hipMemcpyDeviceToHost));
+            &BnormI, Bptr + id - 1, 1 * sizeof(double), hipMemcpyDeviceToHost));
         BnormI = Mabs(BnormI);
       } else {
         BnormI = HPL_rzero;
@@ -406,7 +407,8 @@ void HPL_pdtest(HPL_T_test* TEST,
       }
 
     } else {
-      CHECK_HIP_ERROR(hipMemsetAsync(Bptr, 0, mat.mp * sizeof(double), computeStream));
+      CHECK_HIP_ERROR(
+          hipMemsetAsync(Bptr, 0, mat.mp * sizeof(double), computeStream));
     }
     /*
      * Reduce the distributed residual in process column 0
@@ -426,7 +428,8 @@ void HPL_pdtest(HPL_T_test* TEST,
     if(N <= 0) {
       resid1 = HPL_rzero;
     } else {
-      resid1 = resid0 / (TEST->epsil * (AnormI * XnormI + BnormI) * (double)(N));
+      resid1 =
+          resid0 / (TEST->epsil * (AnormI * XnormI + BnormI) * (double)(N));
     }
 
     if(resid1 < TEST->thrsh)
@@ -475,7 +478,8 @@ void HPL_pdtest(HPL_T_test* TEST,
 
 #ifdef HPL_PROGRESS_REPORT
       printf("Residual value = %.15f (0x%" PRIx64 ")\n",
-             resid1, reinterpret_cast<uint64_t&>(resid1));
+             resid1,
+             reinterpret_cast<uint64_t&>(resid1));
       if(resid1 < TEST->thrsh)
         printf("Residual Check: PASSED \n");
       else

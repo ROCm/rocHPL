@@ -60,12 +60,12 @@ static int deviceMalloc(HPL_T_grid*  GRID,
   }
 }
 
-int HPL_pdpanel_new(HPL_T_test*   TEST,
-                    HPL_T_grid*   GRID,
-                    HPL_T_palg*   ALGO,
-                    HPL_T_pmat*   A,
-                    HPL_T_panel*  PANEL,
-                    size_t &totalMem) {
+int HPL_pdpanel_new(HPL_T_test*  TEST,
+                    HPL_T_grid*  GRID,
+                    HPL_T_palg*  ALGO,
+                    HPL_T_pmat*  A,
+                    HPL_T_panel* PANEL,
+                    size_t&      totalMem) {
   /*
    * Purpose
    * =======
@@ -106,20 +106,22 @@ int HPL_pdpanel_new(HPL_T_test*   TEST,
   int nb    = A->nb;
 
   // Local number of rows and columns
-  int mp = HPL_numrocI(N,   0, nb, nb, myrow, 0, nprow);
-  int nq = HPL_numrocI(N+1, 0, nb, nb, mycol, 0, npcol);
+  int mp = HPL_numrocI(N, 0, nb, nb, myrow, 0, nprow);
+  int nq = HPL_numrocI(N + 1, 0, nb, nb, mycol, 0, npcol);
 
   // LBroadcast Space. Holds A0/L2 + L1 + pivoting arrays
-  size_t lpiv = ((4 * nb + 1 + nprow + 1) * sizeof(int) + sizeof(double) - 1) / (sizeof(double));
+  size_t lpiv = ((4 * nb + 1 + nprow + 1) * sizeof(int) + sizeof(double) - 1) /
+                (sizeof(double));
   size_t numbytes = (A->ld * nb + nb * nb + lpiv) * sizeof(double);
 
   totalMem += numbytes;
   if(deviceMalloc(GRID, (void**)&(PANEL->A0), numbytes, info) != HPL_SUCCESS) {
-    if (rank==0) {
+    if(rank == 0) {
       HPL_pwarn(TEST->outfp,
                 __LINE__,
                 "HPL_pdpanel_new",
-                "[%d,%d] Device memory allocation failed for Panel L workspace. Requested %g GiBs total. Test Skiped.",
+                "[%d,%d] Device memory allocation failed for Panel L "
+                "workspace. Requested %g GiBs total. Test Skiped.",
                 info[1],
                 info[2],
                 ((double)totalMem) / (1024 * 1024 * 1024));
@@ -132,11 +134,12 @@ int HPL_pdpanel_new(HPL_T_test*   TEST,
 
   totalMem += numbytes;
   if(deviceMalloc(GRID, (void**)&(PANEL->U0), numbytes, info) != HPL_SUCCESS) {
-    if (rank==0) {
+    if(rank == 0) {
       HPL_pwarn(TEST->outfp,
                 __LINE__,
                 "HPL_pdpanel_new",
-                "[%d,%d] Device memory allocation failed for Panel U0 workspace. Requested %g GiBs total. Test Skiped.",
+                "[%d,%d] Device memory allocation failed for Panel U0 "
+                "workspace. Requested %g GiBs total. Test Skiped.",
                 info[1],
                 info[2],
                 ((double)totalMem) / (1024 * 1024 * 1024));
@@ -146,20 +149,22 @@ int HPL_pdpanel_new(HPL_T_test*   TEST,
 
   if(nprow > 1) {
     const int NSplit = Mmax(0, ((((int)(A->nq * ALGO->frac)) / nb) * nb));
-    PANEL->nu2 = Mmin(A->nq, NSplit);
-    PANEL->ldu2 = ((PANEL->nu2 + 95) / 128) * 128 + 32; /*pad*/
+    PANEL->nu2       = Mmin(A->nq, NSplit);
+    PANEL->ldu2      = ((PANEL->nu2 + 95) / 128) * 128 + 32; /*pad*/
 
     PANEL->nu1  = A->nq - PANEL->nu2;
     PANEL->ldu1 = ((PANEL->nu1 + 95) / 128) * 128 + 32; /*pad*/
 
     numbytes = (nb * PANEL->ldu1) * sizeof(double);
     totalMem += numbytes;
-    if(deviceMalloc(GRID, (void**)&(PANEL->U1), numbytes, info) != HPL_SUCCESS) {
-      if (rank==0) {
+    if(deviceMalloc(GRID, (void**)&(PANEL->U1), numbytes, info) !=
+       HPL_SUCCESS) {
+      if(rank == 0) {
         HPL_pwarn(TEST->outfp,
                   __LINE__,
                   "HPL_pdpanel_new",
-                  "[%d,%d] Device memory allocation failed for Panel U1 workspace. Requested %g GiBs total. Test Skiped.",
+                  "[%d,%d] Device memory allocation failed for Panel U1 "
+                  "workspace. Requested %g GiBs total. Test Skiped.",
                   info[1],
                   info[2],
                   ((double)totalMem) / (1024 * 1024 * 1024));
@@ -167,18 +172,19 @@ int HPL_pdpanel_new(HPL_T_test*   TEST,
       return HPL_FAILURE;
     }
   } else {
-    PANEL->nu2 = A->nq;
+    PANEL->nu2  = A->nq;
     PANEL->ldu2 = ((PANEL->nu2 + 95) / 128) * 128 + 32; /*pad*/
   }
 
   numbytes = (nb * PANEL->ldu2) * sizeof(double);
   totalMem += numbytes;
   if(deviceMalloc(GRID, (void**)&(PANEL->U2), numbytes, info) != HPL_SUCCESS) {
-    if (rank==0) {
+    if(rank == 0) {
       HPL_pwarn(TEST->outfp,
                 __LINE__,
                 "HPL_pdpanel_new",
-                "[%d,%d] Device memory allocation failed for Panel U2 workspace. Requested %g GiBs total. Test Skiped.",
+                "[%d,%d] Device memory allocation failed for Panel U2 "
+                "workspace. Requested %g GiBs total. Test Skiped.",
                 info[1],
                 info[2],
                 ((double)totalMem) / (1024 * 1024 * 1024));
@@ -214,16 +220,17 @@ int HPL_pdpanel_new(HPL_T_test*   TEST,
 
   size_t itmp1 = (nb << 1);
   size_t iwork = nprow + 1;
-  itmp1 = Mmax(itmp1, iwork);
-  iwork = mp + 3 + (9 * nb) + (3 * nprow) + itmp1;
+  itmp1        = Mmax(itmp1, iwork);
+  iwork        = mp + 3 + (9 * nb) + (3 * nprow) + itmp1;
 
   numbytes = iwork * sizeof(int);
   if(hostMalloc(GRID, (void**)&(PANEL->IWORK), numbytes, info) != HPL_SUCCESS) {
-    if (rank==0) {
+    if(rank == 0) {
       HPL_pwarn(TEST->outfp,
                 __LINE__,
                 "HPL_pdpanel_new",
-                "[%d,%d] Host memory allocation failed for integer workspace. Test Skiped.",
+                "[%d,%d] Host memory allocation failed for integer workspace. "
+                "Test Skiped.",
                 info[1],
                 info[2]);
     }

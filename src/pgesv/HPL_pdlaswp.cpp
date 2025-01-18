@@ -38,7 +38,7 @@ void HPL_pdlaswp_start(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    * .. Local Variables ..
    */
   double *A, *U, *W;
-  int icurrow, jb, k, lda, myrow, n, nprow, LDU, LDW;
+  int     icurrow, jb, k, lda, myrow, n, nprow, LDU, LDW;
 
   /* ..
    * .. Executable Statements ..
@@ -50,9 +50,9 @@ void HPL_pdlaswp_start(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    * Retrieve parameters from the PANEL data structure
    */
   HPL_T_pmat* mat = PANEL->pmat;
-  nprow = PANEL->grid->nprow;
-  myrow = PANEL->grid->myrow;
-  MPI_Comm comm = PANEL->grid->col_comm;
+  nprow           = PANEL->grid->nprow;
+  myrow           = PANEL->grid->myrow;
+  MPI_Comm comm   = PANEL->grid->col_comm;
 
   // quick return if we're 1xQ
   if(nprow == 1) return;
@@ -94,13 +94,13 @@ void HPL_pdlaswp_start(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    */
   if((n <= 0) || (jb <= 0)) return;
 
-  int *permU    = PANEL->dipiv;
-  int *lindxU   = permU + jb;
-  int *lindxA   = lindxU + jb;
-  int *lindxAU  = lindxA + jb;
+  int* permU   = PANEL->dipiv;
+  int* lindxU  = permU + jb;
+  int* lindxA  = lindxU + jb;
+  int* lindxAU = lindxA + jb;
 
-  int *ipA       = PANEL->ipiv + 5 * jb;
-  int *iplen     = ipA + 1;
+  int* ipA   = PANEL->ipiv + 5 * jb;
+  int* iplen = ipA + 1;
 
   /*
    * For i in [0..2*jb),  lindxA[i] is the offset in A of a row that ulti-
@@ -179,9 +179,9 @@ void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    * Retrieve parameters from the PANEL data structure
    */
   HPL_T_pmat* mat = PANEL->pmat;
-  nprow = PANEL->grid->nprow;
-  myrow = PANEL->grid->myrow;
-  MPI_Comm comm = PANEL->grid->col_comm;
+  nprow           = PANEL->grid->nprow;
+  myrow           = PANEL->grid->myrow;
+  MPI_Comm comm   = PANEL->grid->col_comm;
 
   // quick return if we're 1xQ
   if(nprow == 1) return;
@@ -223,15 +223,15 @@ void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    */
   if((n <= 0) || (jb <= 0)) return;
 
-  int *permU    = PANEL->dipiv;
-  int *lindxU   = permU + jb;
-  int *lindxA   = lindxU + jb;
-  int *lindxAU  = lindxA + jb;
+  int* permU   = PANEL->dipiv;
+  int* lindxU  = permU + jb;
+  int* lindxA  = lindxU + jb;
+  int* lindxAU = lindxA + jb;
 
-  int *ipA       = PANEL->ipiv + 5 * jb;
-  int *iplen     = ipA + 1;
-  int *ipcounts  = iplen + nprow + 1;
-  int *ipoffsets = ipcounts + nprow;
+  int* ipA       = PANEL->ipiv + 5 * jb;
+  int* iplen     = ipA + 1;
+  int* ipcounts  = iplen + nprow + 1;
+  int* ipoffsets = ipcounts + nprow;
 
   /* Set MPI message counts and offsets */
   ipcounts[0]  = (iplen[1] - iplen[0]) * LDU;
@@ -242,7 +242,6 @@ void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
     ipoffsets[i] = ipcounts[i - 1] + ipoffsets[i - 1];
   }
   ipoffsets[nprow] = ipcounts[nprow - 1] + ipoffsets[nprow - 1];
-
 
   if(myrow == icurrow) {
 
@@ -333,10 +332,10 @@ void HPL_pdlaswp_end(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
   /*
    * Retrieve parameters from the PANEL data structure
    */
-  nprow = PANEL->grid->nprow;
-  myrow = PANEL->grid->myrow;
-  MPI_Comm comm = PANEL->grid->col_comm;
-  HPL_T_pmat* mat = PANEL->pmat;
+  nprow            = PANEL->grid->nprow;
+  myrow            = PANEL->grid->myrow;
+  MPI_Comm    comm = PANEL->grid->col_comm;
+  HPL_T_pmat* mat  = PANEL->pmat;
 
   A       = PANEL->A;
   lda     = PANEL->lda;
@@ -375,13 +374,13 @@ void HPL_pdlaswp_end(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    */
   if((n <= 0) || (jb <= 0)) return;
 
-  int *permU    = PANEL->dipiv;
-  int *lindxU   = permU + jb;
-  int *lindxA   = lindxU + jb;
-  int *lindxAU  = lindxA + jb;
+  int* permU   = PANEL->dipiv;
+  int* lindxU  = permU + jb;
+  int* lindxA  = lindxU + jb;
+  int* lindxAU = lindxA + jb;
 
-  int *ipA       = PANEL->ipiv + 5 * jb;
-  int *iplen     = ipA + 1;
+  int* ipA   = PANEL->ipiv + 5 * jb;
+  int* iplen = ipA + 1;
 
   // just local swaps if we're 1xQ
   if(nprow == 1) {

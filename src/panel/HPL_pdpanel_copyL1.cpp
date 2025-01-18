@@ -13,23 +13,14 @@ void HPL_pdpanel_copyL1(HPL_T_panel* PANEL) {
   const int jb = PANEL->jb;
 
   if((PANEL->grid->mycol != PANEL->pcol) ||
-     (PANEL->grid->myrow != PANEL->prow) ||
-     (jb <= 0))
+     (PANEL->grid->myrow != PANEL->prow) || (jb <= 0))
     return;
 
-  if (PANEL->algo->L1notran) {
-    HPL_dlacpy_gpu(jb,
-                   jb,
-                   PANEL->L1,
-                   jb,
-                   Mptr(PANEL->A, 0, -jb, PANEL->lda),
-                   PANEL->lda);
+  if(PANEL->algo->L1notran) {
+    HPL_dlacpy_gpu(
+        jb, jb, PANEL->L1, jb, Mptr(PANEL->A, 0, -jb, PANEL->lda), PANEL->lda);
   } else {
-    HPL_dlatcpy_gpu(jb,
-                    jb,
-                    PANEL->L1,
-                    jb,
-                    Mptr(PANEL->A, 0, -jb, PANEL->lda),
-                    PANEL->lda);
+    HPL_dlatcpy_gpu(
+        jb, jb, PANEL->L1, jb, Mptr(PANEL->A, 0, -jb, PANEL->lda), PANEL->lda);
   }
 }

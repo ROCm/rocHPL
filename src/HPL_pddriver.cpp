@@ -201,10 +201,10 @@ int main(int ARGC, char** ARGV) {
 
                     algo.L1notran = L1notran;
                     algo.Unotran  = Unotran;
-                    algo.fswap = fswap;
-                    algo.fsthr = tswap;
-                    algo.equil = equil;
-                    algo.align = align;
+                    algo.fswap    = fswap;
+                    algo.fsthr    = tswap;
+                    algo.equil    = equil;
+                    algo.align    = align;
 
                     algo.frac = frac;
                     algo.its  = its;

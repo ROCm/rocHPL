@@ -48,8 +48,8 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
   if(A->n <= 0) return;
 
   HPL_T_UPD_FUN HPL_pdupdate;
-  int N, icurcol = 0, j, jb, jj = 0, jstart, k, mycol, myrow, n, nb, nn, npcol, nq,
-         tag = MSGID_BEGIN_FACT;
+  int N, icurcol = 0, j, jb, jj = 0, jstart, k, mycol, myrow, n, nb, nn, npcol,
+         nq, tag = MSGID_BEGIN_FACT;
 #ifdef HPL_PROGRESS_REPORT
   double start_time, time, step_time, gflops, step_gflops;
 #endif
@@ -78,8 +78,7 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
   jstart = 0;
 
   jb = Mmin(nn, nb);
-  HPL_pdpanel_init(
-      GRID, ALGO, nn, nn + 1, jb, A, jstart, jstart, tag, curr);
+  HPL_pdpanel_init(GRID, ALGO, nn, nn + 1, jb, A, jstart, jstart, tag, curr);
   nn -= jb;
   jstart += jb;
   if(mycol == icurcol) {
@@ -104,7 +103,7 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
   /*
    * Factor and broadcast 0-th panel
    */
-  if (mycol == 0) {
+  if(mycol == 0) {
     HPL_pdpanel_SendToHost(curr);
     HPL_pdpanel_Wait(curr);
 
@@ -222,7 +221,6 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
       HPL_pdupdate(curr, HPL_UPD_2);
     }
 
-
     /* broadcast current panel */
     HPL_pdpanel_bcast(next);
 
@@ -276,7 +274,7 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
 #ifdef HPL_PROGRESS_REPORT
 #ifdef HPL_DETAILED_TIMING
     const int icurr = (curr->grid->myrow == curr->prow ? 1 : 0);
-    const int mp   = curr->mp - (icurr != 0 ? jb : 0);
+    const int mp    = curr->mp - (icurr != 0 ? jb : 0);
 
     if(curr->nu0) {
       // compute the GFLOPs of the look ahead update DGEMM
@@ -292,14 +290,14 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
     if(curr->nu1) {
       CHECK_HIP_ERROR(hipEventElapsedTime(
           &largeDgemm1Time, dgemmStart[HPL_UPD_1], dgemmStop[HPL_UPD_1]));
-      largeDgemm1Gflops = (2.0 * mp * jb * (curr->nu1)) /
-                          (1000.0 * 1000.0 * (largeDgemm1Time));
+      largeDgemm1Gflops =
+          (2.0 * mp * jb * (curr->nu1)) / (1000.0 * 1000.0 * (largeDgemm1Time));
     }
     if(curr->nu2) {
       CHECK_HIP_ERROR(hipEventElapsedTime(
           &largeDgemm2Time, dgemmStart[HPL_UPD_2], dgemmStop[HPL_UPD_2]));
-      largeDgemm2Gflops = (2.0 * mp * jb * (curr->nu2)) /
-                          (1000.0 * 1000.0 * (largeDgemm2Time));
+      largeDgemm2Gflops =
+          (2.0 * mp * jb * (curr->nu2)) / (1000.0 * 1000.0 * (largeDgemm2Time));
     }
 #endif
     /* if this is process 0,0 and not the first panel */
@@ -362,7 +360,7 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
     }
 #endif
 
-    std::swap(curr,next);
+    std::swap(curr, next);
   }
 
   /*

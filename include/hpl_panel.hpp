@@ -29,20 +29,20 @@
  * ---------------------------------------------------------------------
  */
 typedef struct HPL_S_panel {
-  struct HPL_S_grid* grid;       /* ptr to the process grid */
-  struct HPL_S_palg* algo;       /* ptr to the algo parameters */
-  struct HPL_S_pmat* pmat;       /* ptr to the local array info */
-  double*            A;          /* ptr to trailing part of A */
-  double*            A0;         /* ptr to current panel of A */
-  double*            L2;         /* ptr to L */
-  double*            L1;         /* ptr to jb x jb upper block of A */
-  double*            U0;         /* ptr to U */
-  double*            U1;         /* ptr to U1 */
-  double*            U2;         /* ptr to U2 */
-  double*            hA0;        /* ptr to host copy of trailing part of A */
-  double*            hL2;        /* ptr to host copy of L */
-  double*            hL1;        /* ptr to host copy of jb x jb upper block of A */
-  int*               IWORK;      /* integer workspace for swapping */
+  struct HPL_S_grid* grid;  /* ptr to the process grid */
+  struct HPL_S_palg* algo;  /* ptr to the algo parameters */
+  struct HPL_S_pmat* pmat;  /* ptr to the local array info */
+  double*            A;     /* ptr to trailing part of A */
+  double*            A0;    /* ptr to current panel of A */
+  double*            L2;    /* ptr to L */
+  double*            L1;    /* ptr to jb x jb upper block of A */
+  double*            U0;    /* ptr to U */
+  double*            U1;    /* ptr to U1 */
+  double*            U2;    /* ptr to U2 */
+  double*            hA0;   /* ptr to host copy of trailing part of A */
+  double*            hL2;   /* ptr to host copy of L */
+  double*            hL1;   /* ptr to host copy of jb x jb upper block of A */
+  int*               IWORK; /* integer workspace for swapping */
   int*               ipiv;
   int*               dipiv;
   int                nu0;

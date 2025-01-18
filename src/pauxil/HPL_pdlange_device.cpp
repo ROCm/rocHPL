@@ -122,7 +122,7 @@ double HPL_pdlange(const HPL_T_grid* GRID,
                    const int         NB,
                    const double*     A,
                    const int         LDA,
-                         double*     WORK) {
+                   double*           WORK) {
   /*
    * Purpose
    * =======
@@ -201,7 +201,7 @@ double HPL_pdlange(const HPL_T_grid* GRID,
         int id;
         CHECK_ROCBLAS_ERROR(rocblas_idamax(handle, nq, A, LDA, &id));
         CHECK_HIP_ERROR(hipMemcpy(&v0,
-                                  A + ((size_t)(id-1) * LDA),
+                                  A + ((size_t)(id - 1) * LDA),
                                   1 * sizeof(double),
                                   hipMemcpyDeviceToHost));
       } else {
@@ -245,8 +245,8 @@ double HPL_pdlange(const HPL_T_grid* GRID,
       if(myrow == 0) {
         int id;
         CHECK_ROCBLAS_ERROR(rocblas_idamax(handle, nq, WORK, 1, &id));
-        CHECK_HIP_ERROR(
-            hipMemcpy(&v0, WORK + id - 1, 1 * sizeof(double), hipMemcpyDeviceToHost));
+        CHECK_HIP_ERROR(hipMemcpy(
+            &v0, WORK + id - 1, 1 * sizeof(double), hipMemcpyDeviceToHost));
         v0 = Mabs(v0);
       }
     }
@@ -282,8 +282,8 @@ double HPL_pdlange(const HPL_T_grid* GRID,
       if(mycol == 0) {
         int id;
         CHECK_ROCBLAS_ERROR(rocblas_idamax(handle, nq, WORK, 1, &id));
-        CHECK_HIP_ERROR(
-            hipMemcpy(&v0, WORK + id - 1, 1 * sizeof(double), hipMemcpyDeviceToHost));
+        CHECK_HIP_ERROR(hipMemcpy(
+            &v0, WORK + id - 1, 1 * sizeof(double), hipMemcpyDeviceToHost));
         v0 = Mabs(v0);
       }
     }

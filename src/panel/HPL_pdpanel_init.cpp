@@ -149,7 +149,8 @@ void HPL_pdpanel_init(HPL_T_grid*  GRID,
   /*Split fraction*/
   const double fraction = ALGO->frac;
 
-  size_t lpiv = ((4 * nb + 1 + nprow + 1) * sizeof(int) + sizeof(double) - 1) / (sizeof(double));
+  size_t lpiv = ((4 * nb + 1 + nprow + 1) * sizeof(int) + sizeof(double) - 1) /
+                (sizeof(double));
 
   ml2 = mp;
   ml2 = Mmax(0, ml2);
@@ -161,15 +162,15 @@ void HPL_pdpanel_init(HPL_T_grid*  GRID,
   /*
    * Initialize the pointers of the panel structure
    */
-  PANEL->lda0 = Mmax(0, ml2);
-  PANEL->ldl2 = PANEL->lda0;
-  PANEL->L2   = PANEL->A0 + (myrow == icurrow ? JB : 0);
-  PANEL->L1   = PANEL->A0 + ml2 * JB;
+  PANEL->lda0  = Mmax(0, ml2);
+  PANEL->ldl2  = PANEL->lda0;
+  PANEL->L2    = PANEL->A0 + (myrow == icurrow ? JB : 0);
+  PANEL->L1    = PANEL->A0 + ml2 * JB;
   PANEL->dipiv = reinterpret_cast<int*>(PANEL->L1 + JB * JB);
 
-  PANEL->hA0   = A->hA0;
-  PANEL->hL2   = PANEL->hA0 + (myrow == icurrow ? JB : 0);
-  PANEL->hL1   = PANEL->hA0 + ml2 * JB;
+  PANEL->hA0 = A->hA0;
+  PANEL->hL2 = PANEL->hA0 + (myrow == icurrow ? JB : 0);
+  PANEL->hL1 = PANEL->hA0 + ml2 * JB;
 
   PANEL->ipiv = PANEL->IWORK;
 
@@ -187,8 +188,8 @@ void HPL_pdpanel_init(HPL_T_grid*  GRID,
     PANEL->ldu2 = ((PANEL->nu2 + 95) / 128) * 128 + 32; /*pad*/
   } else {
     const int NSplit = Mmax(0, ((((int)(A->nq * fraction)) / nb) * nb));
-    PANEL->nu0  = (mycol == inxtcol) ? Mmin(JB, nu) : 0;
-    PANEL->ldu0 = PANEL->nu0;
+    PANEL->nu0       = (mycol == inxtcol) ? Mmin(JB, nu) : 0;
+    PANEL->ldu0      = PANEL->nu0;
 
     PANEL->nu2  = Mmin(nu - PANEL->nu0, NSplit);
     PANEL->ldu2 = ((PANEL->nu2 + 95) / 128) * 128 + 32; /*pad*/

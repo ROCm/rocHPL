@@ -72,18 +72,18 @@ typedef struct HPL_S_grid {
   if(++(I) == (d)) (I) = 0
 /* decrement with mod */
 #define MModDec(I, d) \
-  if(--(I) == -1) (I) = (d)-1
+  if(--(I) == -1) (I) = (d) - 1
 /* positive modulo */
 #define MPosMod(I, d) ((I) - ((I) / (d)) * (d))
 /* add two numbers */
 #define MModAdd(I1, I2, d) \
   (((I1) + (I2) < (d)) ? (I1) + (I2) : (I1) + (I2) - (d))
 /* add 1 to # */
-#define MModAdd1(I, d) (((I) != (d)-1) ? (I) + 1 : 0)
+#define MModAdd1(I, d) (((I) != (d) - 1) ? (I) + 1 : 0)
 /* subtract two numbers */
 #define MModSub(I1, I2, d) (((I1) < (I2)) ? (d) + (I1) - (I2) : (I1) - (I2))
 /* sub 1 from # */
-#define MModSub1(I, d) (((I) != 0) ? (I)-1 : (d)-1)
+#define MModSub1(I, d) (((I) != 0) ? (I) - 1 : (d) - 1)
 /*
  * ---------------------------------------------------------------------
  * grid function prototypes
