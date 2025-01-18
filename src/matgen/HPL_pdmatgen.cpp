@@ -13,7 +13,7 @@
 #include <cassert>
 #include <unistd.h>
 
-const int max_nthreads = 128;
+const int max_nthreads = 512;
 
 static int Malloc(HPL_T_grid*  GRID,
                   void**       ptr,
