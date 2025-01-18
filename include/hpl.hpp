@@ -50,6 +50,11 @@ but will potentailly lead to residual values which vary from run-to-run
 #endif
 #include "hip/hip_runtime_api.h"
 
+#ifdef HPL_TRACING
+#include <roctracer.h>
+#include <roctx.h>
+#endif
+
 #include "hpl_version.hpp"
 #include "hpl_misc.hpp"
 #include "hpl_blas.hpp"

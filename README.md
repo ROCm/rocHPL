@@ -31,6 +31,7 @@ cd rocHPL
 #    --verbose-print      - Verbose output during HPL setup (Default: true)
 #    --progress-report    - Print progress report to terminal during HPL run (Default: true)
 #    --detailed-timing    - Record detailed timers during HPL run (Default: true)
+#    --enable-tracing     - Annotate profiler traces with rocTX markers (Default: false)
 ./install.sh
 ```
 By default, [BLIS] v4.2, [UCX] v1.16.0, and [OpenMPI] v5.0.3 will be cloned and built in rocHPL/tpl. After building, the `rochpl` executable is placed in build/rochpl-install.

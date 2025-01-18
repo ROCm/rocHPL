@@ -56,7 +56,7 @@ int HPL_bcast(double*   SBUF,
 
   int ierr;
 
-  roctxRangePush("HPL_Bcast");
+  HPL_TracingPush("HPL_Bcast");
 
 #ifdef HPL_USE_COLLECTIVES
 
@@ -76,7 +76,7 @@ int HPL_bcast(double*   SBUF,
 
 #endif
 
-  roctxRangePop();
+  HPL_TracingPop();
 
   return ((ierr == MPI_SUCCESS ? HPL_SUCCESS : HPL_FAILURE));
 }

@@ -82,28 +82,30 @@ find_package(MPI REQUIRED)
 list(APPEND CMAKE_PREFIX_PATH ${ROCBLAS_PATH} ${ROCM_PATH} )
 list(APPEND CMAKE_MODULE_PATH ${ROCM_PATH}/lib/cmake/hip )
 
-find_library(ROCTRACER NAMES roctracer64
-             PATHS ${ROCM_PATH}/lib
-             NO_DEFAULT_PATH)
-find_library(ROCTX NAMES roctx64
-             PATHS ${ROCM_PATH}/lib
-             NO_DEFAULT_PATH)
+if(HPL_TRACING)
+  find_library(ROCTRACER NAMES roctracer64
+               PATHS ${ROCM_PATH}/lib
+               NO_DEFAULT_PATH)
+  find_library(ROCTX NAMES roctx64
+               PATHS ${ROCM_PATH}/lib
+               NO_DEFAULT_PATH)
 
-message("-- roctracer:  ${ROCTRACER}")
-message("-- roctx:      ${ROCTX}")
+  message("-- roctracer:  ${ROCTRACER}")
+  message("-- roctx:      ${ROCTX}")
 
-add_library(roc::roctracer SHARED IMPORTED)
-set_target_properties(roc::roctracer PROPERTIES
-  INTERFACE_INCLUDE_DIRECTORIES "${ROCM_PATH}/include"
-  INTERFACE_LINK_LIBRARIES "hip::host"
-  IMPORTED_LOCATION "${ROCTRACER}"
-  IMPORTED_SONAME "libroctracer.so")
-add_library(roc::roctx SHARED IMPORTED)
-set_target_properties(roc::roctx PROPERTIES
-  INTERFACE_INCLUDE_DIRECTORIES "${ROCM_PATH}/include"
-  INTERFACE_LINK_LIBRARIES "hip::host"
-  IMPORTED_LOCATION "${ROCTX}"
-  IMPORTED_SONAME "libroctx64.so")
+  add_library(roc::roctracer SHARED IMPORTED)
+  set_target_properties(roc::roctracer PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${ROCM_PATH}/include"
+    INTERFACE_LINK_LIBRARIES "hip::host"
+    IMPORTED_LOCATION "${ROCTRACER}"
+    IMPORTED_SONAME "libroctracer.so")
+  add_library(roc::roctx SHARED IMPORTED)
+  set_target_properties(roc::roctx PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${ROCM_PATH}/include"
+    INTERFACE_LINK_LIBRARIES "hip::host"
+    IMPORTED_LOCATION "${ROCTX}"
+    IMPORTED_SONAME "libroctx64.so")
+endif()
 
 # Find HIP package
 find_package(HIP REQUIRED)

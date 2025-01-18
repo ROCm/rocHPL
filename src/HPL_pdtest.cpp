@@ -127,13 +127,13 @@ void HPL_pdtest(HPL_T_test* TEST,
      */
     HPL_ptimer_boot();
     (void)HPL_barrier(GRID->all_comm);
-    roctxRangePush("FOM Region");
+    HPL_TracingPush("FOM Region");
     time(&current_time_start);
     HPL_ptimer(0);
     HPL_pdgesv(GRID, ALGO, &mat);
     HPL_ptimer(0);
     time(&current_time_end);
-    roctxRangePop();
+    HPL_TracingPop();
 
     /*
      * Gather max of all CPU and WALL clock timings and print timing results

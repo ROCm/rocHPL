@@ -21,6 +21,7 @@ function display_help()
   echo "    [--verbose-print] Verbose output during HPL setup (Default: true)"
   echo "    [--progress-report] Print progress report to terminal during HPL run (Default: true)"
   echo "    [--detailed-timing] Record detailed timers during HPL run (Default: true)"
+  echo "    [--enable-tracing] Annotate profiler traces with rocTX markers (Default: false)"
 }
 
 # prereq: ${ID} must be defined before calling
@@ -160,7 +161,7 @@ install_openmpi( )
         [ ! -f "${ucx_lib_folder}/libucs.so" ] || [ ! -f "${ucx_lib_folder}/libuct.so" ]) && \
        ([ ! -f "${ucx_lib64_folder}/libucm.so" ] || [ ! -f "${ucx_lib64_folder}/libucp.so" ]  || \
         [ ! -f "${ucx_lib64_folder}/libucs.so" ] || [ ! -f "${ucx_lib64_folder}/libuct.so" ]); then
-    cd tpl/ucx; 
+    cd tpl/ucx;
     ./autogen.sh; ./autogen.sh
     check_exit_code 2
     mkdir build; cd build
@@ -253,6 +254,7 @@ with_cpublas=tpl/blis/lib
 verbose_print=true
 progress_report=true
 detailed_timing=true
+enable_tracing=false
 
 # #################################################
 # Parameter parsing
@@ -261,7 +263,7 @@ detailed_timing=true
 # check if we have a modern version of getopt that can handle whitespace and long parameters
 getopt -T
 if [[ $? -eq 4 ]]; then
-  GETOPT_PARSE=$(getopt --name "${0}" --longoptions help,debug,prefix:,with-rocm:,with-mpi:,with-rocblas:,with-cpublas:,verbose-print:,progress-report:,detailed-timing: --options hg -- "$@")
+  GETOPT_PARSE=$(getopt --name "${0}" --longoptions help,debug,prefix:,with-rocm:,with-mpi:,with-rocblas:,with-cpublas:,verbose-print:,progress-report:,detailed-timing:,enable-tracing: --options hg -- "$@")
 else
   echo "Need a new version of getopt"
   exit_with_error 1
@@ -306,6 +308,9 @@ while true; do
         shift 2 ;;
     --detailed-timing)
         detailed_timing=${2}
+        shift 2 ;;
+    --enable-tracing)
+        enable_tracing=${2}
         shift 2 ;;
     --) shift ; break ;;
     *)  echo "Unexpected command line parameter received; aborting";
@@ -373,6 +378,9 @@ pushd .
   fi
   if [[ "${detailed_timing}" == on || "${detailed_timing}" == true || "${detailed_timing}" == 1 || "${detailed_timing}" == enabled ]]; then
     cmake_common_options="${cmake_common_options} -DHPL_DETAILED_TIMING=ON"
+  fi
+  if [[ "${enable_tracing}" == on || "${enable_tracing}" == true || "${enable_tracing}" == 1 || "${enable_tracing}" == enabled ]]; then
+    cmake_common_options="${cmake_common_options} -DHPL_TRACING=ON"
   fi
   shopt -u nocasematch
 

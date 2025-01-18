@@ -58,7 +58,7 @@ int HPL_allgatherv(double*    BUF,
    * ---------------------------------------------------------------------
    */
 
-  roctxRangePush("HPL_Allgatherv");
+  HPL_TracingPush("HPL_Allgatherv");
 
 #ifdef HPL_USE_COLLECTIVES
 
@@ -122,7 +122,7 @@ int HPL_allgatherv(double*    BUF,
 
 #endif
 
-  roctxRangePop();
+  HPL_TracingPop();
 
   return ((ierr == MPI_SUCCESS ? HPL_SUCCESS : HPL_FAILURE));
 }

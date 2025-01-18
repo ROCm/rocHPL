@@ -81,7 +81,7 @@ void HPL_all_reduce_dmxswp(double*   BUFFER,
    * ---------------------------------------------------------------------
    */
 
-  roctxRangePush("HPL_all_reduce_dmxswp");
+  HPL_TracingPush("HPL_all_reduce_dmxswp");
 
 #ifdef HPL_USE_COLLECTIVES
 
@@ -294,5 +294,5 @@ void HPL_all_reduce_dmxswp(double*   BUFFER,
   }
 
 #endif
-  roctxRangePop();
+  HPL_TracingPop();
 }

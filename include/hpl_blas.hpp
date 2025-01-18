@@ -23,8 +23,6 @@
 
 #include "hpl_misc.hpp"
 #include <rocblas/rocblas.h>
-#include <roctracer.h>
-#include <roctx.h>
 #include <iostream>
 
 extern rocblas_handle handle;

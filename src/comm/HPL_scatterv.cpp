@@ -68,7 +68,7 @@ int HPL_scatterv(double*    BUF,
   int rank, ierr = MPI_SUCCESS;
   MPI_Comm_rank(COMM, &rank);
 
-  roctxRangePush("HPL_Scatterv");
+  HPL_TracingPush("HPL_Scatterv");
 
 #ifdef HPL_USE_COLLECTIVES
 
@@ -119,7 +119,7 @@ int HPL_scatterv(double*    BUF,
   }
 
 #endif
-  roctxRangePop();
+  HPL_TracingPop();
 
   return ((ierr == MPI_SUCCESS ? HPL_SUCCESS : HPL_FAILURE));
 }

@@ -28,6 +28,7 @@ cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
 option(HPL_VERBOSE_PRINT   "Enable printing to terminal during run" OFF)
 option(HPL_PROGRESS_REPORT "Enable printing progess report to terminal during run" OFF)
 option(HPL_DETAILED_TIMING "Enable detailed timers during run" OFF)
+option(HPL_TRACING         "Annotate profiler traces with rocTX markers" OFF)
 
 option(ROCM_PATH "Path to ROCm install" /opt/rocm)
 option(HPL_BLAS_DIR "Path to CPU BLAS library" ${CMAKE_CURRENT_SOURCE_DIR}/tpl/openblas)
@@ -141,6 +142,10 @@ if(HPL_PROGRESS_REPORT)
   target_compile_definitions(rochpl PRIVATE HPL_PROGRESS_REPORT)
 endif()
 
+if(HPL_TRACING)
+  target_compile_definitions(rochpl PRIVATE HPL_TRACING)
+endif()
+
 # Target include directories
 target_include_directories(rochpl
                            PRIVATE
@@ -162,8 +167,11 @@ target_link_libraries(rochpl PRIVATE OpenMP::OpenMP_CXX)
 # Target link libraries
 target_link_libraries(rochpl PRIVATE BLAS::BLAS)
 target_link_libraries(rochpl PRIVATE roc::rocblas)
-target_link_libraries(rochpl PRIVATE roc::roctracer)
-target_link_libraries(rochpl PRIVATE roc::roctx)
+
+if(HPL_TRACING)
+  target_link_libraries(rochpl PRIVATE roc::roctracer)
+  target_link_libraries(rochpl PRIVATE roc::roctx)
+endif()
 
 # Target properties
 set_target_properties(rochpl PROPERTIES VERSION ${rochpl_VERSION})

@@ -78,7 +78,7 @@ void HPL_pdfact(HPL_T_panel* PANEL) {
   double max_value[512];
   int    max_index[512];
 
-  roctxRangePush("pdfact");
+  HPL_TracingPush("pdfact");
 
 #pragma omp parallel shared(max_value, max_index)
   {
@@ -97,7 +97,7 @@ void HPL_pdfact(HPL_T_panel* PANEL) {
                        max_index);
   }
 
-  roctxRangePop();
+  HPL_TracingPop();
 
   PANEL->A = Mptr(PANEL->A, 0, jb, PANEL->lda);
   PANEL->nq -= jb;

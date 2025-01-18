@@ -61,6 +61,14 @@
  */
 #define HPL_PTR(ptr_, al_) ((((size_t)(ptr_) + (al_)-1) / (al_)) * (al_))
 #endif
+
+#ifdef HPL_TRACING
+#define HPL_TracingPush(label) HPL_TracingPush(label)
+#define HPL_TracingPop(label) HPL_TracingPop()
+#else
+#define HPL_TracingPush(label)
+#define HPL_TracingPop(label)
+#endif
 /*
  * End of hpl_misc.hpp
  */
