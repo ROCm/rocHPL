@@ -307,13 +307,13 @@ void HPL_pdtest(HPL_T_test* TEST,
      */
     HPL_pdrandmat(GRID, N, N + 1, NB, mat.A, mat.ld, HPL_ISEED);
 
-    Anorm1 = HPL_pdlange(GRID, HPL_NORM_1, N, N, NB, mat.A, mat.ld);
-    AnormI = HPL_pdlange(GRID, HPL_NORM_I, N, N, NB, mat.A, mat.ld);
+    Anorm1 = HPL_pdlange(GRID, HPL_NORM_1, N, N, NB, mat.A, mat.ld, mat.W0);
+    AnormI = HPL_pdlange(GRID, HPL_NORM_I, N, N, NB, mat.A, mat.ld, mat.W0);
     /*
      * Because x is distributed in process rows, switch the norms
      */
-    XnormI = HPL_pdlange(GRID, HPL_NORM_1, 1, N, NB, mat.X, 1);
-    Xnorm1 = HPL_pdlange(GRID, HPL_NORM_I, 1, N, NB, mat.X, 1);
+    XnormI = HPL_pdlange(GRID, HPL_NORM_1, 1, N, NB, mat.X, 1, mat.W0);
+    Xnorm1 = HPL_pdlange(GRID, HPL_NORM_I, 1, N, NB, mat.X, 1, mat.W0);
     /*
      * If I am in the col that owns b, (1) compute local BnormI, (2) all_reduce to
      * find the max (in the col). Then (3) broadcast along the rows so that every
@@ -325,14 +325,13 @@ void HPL_pdtest(HPL_T_test* TEST,
     Bptr = Mptr(mat.A, 0, nq, mat.ld);
     if(mycol == HPL_indxg2p(N, NB, NB, 0, npcol)) {
       if(mat.mp > 0) {
-        // int id = HPL_idamax( mat.mp, Bptr, 1);
-        // BnormI = Bptr[id];
         int id;
         CHECK_ROCBLAS_ERROR(rocblas_idamax(handle, mat.mp, Bptr, 1, &id));
 
         // Note: id is in Fortran indexing
         CHECK_HIP_ERROR(hipMemcpy(
           &BnormI, Bptr + id - 1, 1 * sizeof(double), hipMemcpyDeviceToHost));
+        BnormI = Mabs(BnormI);
       } else {
         BnormI = HPL_rzero;
       }
@@ -347,7 +346,6 @@ void HPL_pdtest(HPL_T_test* TEST,
     /*
      * If I own b, compute ( b - A x ) and ( - A x ) otherwise
      */
-
     // rocBLAS < v4.2 has an integer overflow problem in dgemv, so
     // chunk the nq columns to compute the full dgemv
     const int nq_chunk = std::numeric_limits<int>::max() / (mat.ld);
@@ -420,7 +418,7 @@ void HPL_pdtest(HPL_T_test* TEST,
     /*
      * Compute || b - A x ||_oo
      */
-    resid0 = HPL_pdlange(GRID, HPL_NORM_I, N, 1, NB, Bptr, mat.ld);
+    resid0 = HPL_pdlange(GRID, HPL_NORM_I, N, 1, NB, Bptr, mat.ld, mat.W0);
 
     /*
      * Computes and displays norms, residuals ...

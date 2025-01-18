@@ -83,12 +83,6 @@ void HPL_dlatcpy_gpu(const int,
                      double*,
                      const int);
 
-double HPL_dlange(const HPL_T_NORM,
-                  const int,
-                  const int,
-                  const double*,
-                  const int);
-
 double HPL_dlamch(const HPL_T_MACH);
 
 #endif

@@ -171,10 +171,13 @@ int HPL_pdmatgen(HPL_T_test* TEST,
 
   // W spaces
   /*pdtrsv needs two vectors for B and W */
+  /*pdlange needs nq and 1024 as workspace */
   int Anp;
   Mnumroc(Anp, mat->n, mat->nb, mat->nb, myrow, 0, nprow);
   numbytes = (NB * NB) * sizeof(double);
   numbytes = Mmax(2 * Anp * sizeof(double), numbytes);
+  numbytes = Mmax(mat->nq * sizeof(double), numbytes);
+  numbytes = Mmax(1024    * sizeof(double), numbytes);
 
   totalDeviceMem += numbytes;
   if(deviceMalloc(GRID, (void**)&(mat->W0), numbytes, info) != HPL_SUCCESS) {

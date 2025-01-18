@@ -279,7 +279,8 @@ double HPL_pdlange(const HPL_T_grid*,
                    const int,
                    const int,
                    const double*,
-                   const int);
+                   const int,
+                         double*);
 
 #endif
 /*
