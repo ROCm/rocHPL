@@ -11,12 +11,6 @@
 
 void HPL_pdpanel_Wait(HPL_T_panel* PANEL) {
 
-#ifdef HPL_DETAILED_TIMING
-  HPL_ptimer(HPL_TIMING_COPY);
-#endif
   // Wait for panel
   CHECK_HIP_ERROR(hipEventSynchronize(panelCopy));
-#ifdef HPL_DETAILED_TIMING
-  HPL_ptimer(HPL_TIMING_COPY);
-#endif
 }
