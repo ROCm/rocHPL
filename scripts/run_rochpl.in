@@ -276,8 +276,7 @@ col_stride=$((row_stride/q))
 myp=$((rank%p))
 myq=$((rank/p))
 
-#Although ranks are column-major order, we select GPUs in row-major order on node
-mygpu=$((myq+myp*q))
+mygpu=$((myp+myq*p))
 
 # Try to detect special Bard-peak core mapping
 if [[ -n ${HPL_PLATFORM+x} ]]; then
@@ -415,8 +414,6 @@ elif [[ "$platform" == "ParryPeak" || "$platform" == "Sh54p" || "$platform" == "
       echo "Unable to determine partitioning mode on ParryPeak platform; aborting";
       exit 1
     fi
-
-    mygpu=$((myq*p+myp))
 
     root_core=${root_cores[mygpu]}
 

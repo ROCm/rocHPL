@@ -15,6 +15,9 @@
  */
 
 #include "hpl.hpp"
+#include <cassert>
+
+const int max_nthreads = 512;
 
 static int hostMalloc(HPL_T_grid*  GRID,
                       void**       ptr,
@@ -110,7 +113,7 @@ int HPL_pdpanel_new(HPL_T_test*  TEST,
   int nq = HPL_numrocI(N + 1, 0, nb, nb, mycol, 0, npcol);
 
   // LBroadcast Space. Holds A0/L2 + L1 + pivoting arrays
-  size_t lpiv = ((4 * nb + 1 + nprow + 1) * sizeof(int) + sizeof(double) - 1) /
+  size_t lpiv = (nb * sizeof(int) + sizeof(double) - 1) /
                 (sizeof(double));
   size_t numbytes = (A->ld * nb + nb * nb + lpiv) * sizeof(double);
 
@@ -224,7 +227,7 @@ int HPL_pdpanel_new(HPL_T_test*  TEST,
   iwork        = mp + 3 + (9 * nb) + (3 * nprow) + itmp1;
 
   numbytes = iwork * sizeof(int);
-  if(hostMalloc(GRID, (void**)&(PANEL->IWORK), numbytes, info) != HPL_SUCCESS) {
+  if(deviceMalloc(GRID, (void**)&(PANEL->IWORK), numbytes, info) != HPL_SUCCESS) {
     if(rank == 0) {
       HPL_pwarn(TEST->outfp,
                 __LINE__,
@@ -235,6 +238,25 @@ int HPL_pdpanel_new(HPL_T_test*  TEST,
                 info[2]);
     }
     return HPL_FAILURE;
+  }
+
+  #pragma omp parallel
+  {
+    /*First touch*/
+    const int thread_rank = omp_get_thread_num();
+    const int thread_size = omp_get_num_threads();
+    assert(thread_size <= max_nthreads);
+
+    for(int i = 0; i < A->ld; i += nb) {
+      if((i / nb) % thread_size == thread_rank) {
+        const int mm = std::min(nb, A->ld - i);
+        for(int k = 0; k < nb; ++k) {
+          for(int j = 0; j < mm; ++j) {
+            PANEL->A0[j + i + static_cast<size_t>(A->ld) * k] = 0.0;
+          }
+        }
+      }
+    }
   }
 
   return HPL_SUCCESS;

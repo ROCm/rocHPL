@@ -110,12 +110,12 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
     HPL_pdfact(curr);
 
     HPL_pdpanel_SendToDevice(curr);
-    HPL_pdpanel_swapids(curr);
     HPL_pdpanel_Wait(curr);
     HPL_pdpanel_copyL1(curr);
   }
 
   HPL_pdpanel_bcast(curr);
+  HPL_pdpanel_swapids(curr);
 
   // start Ubcast+row swapping for second part of A
   HPL_pdlaswp_start(curr, HPL_UPD_2);
@@ -188,19 +188,11 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
       HPL_pdlaswp_end(curr, HPL_LOOK_AHEAD);
       HPL_pdupdate(curr, HPL_LOOK_AHEAD);
 
-      CHECK_HIP_ERROR(
-          hipStreamWaitEvent(dataStream, update[HPL_LOOK_AHEAD], 0));
       HPL_pdpanel_SendToHost(next);
 
       /* Queue up finishing the second section */
       HPL_pdlaswp_end(curr, HPL_UPD_2);
       HPL_pdupdate(curr, HPL_UPD_2);
-
-#ifdef HPL_DETAILED_TIMING
-      HPL_ptimer(HPL_TIMING_UPDATE);
-      CHECK_HIP_ERROR(hipEventSynchronize(update[HPL_LOOK_AHEAD]));
-      HPL_ptimer(HPL_TIMING_UPDATE);
-#endif
 
       // wait for the panel to arrive
       HPL_pdpanel_Wait(next);
@@ -210,8 +202,6 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
       HPL_pdfact(next); /* factor current panel */
 
       HPL_pdpanel_SendToDevice(next);
-      HPL_pdpanel_swapids(next);
-      HPL_pdpanel_Wait(next);
       HPL_pdpanel_copyL1(next);
 
       // compute swapping info
@@ -223,6 +213,7 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
 
     /* broadcast current panel */
     HPL_pdpanel_bcast(next);
+    HPL_pdpanel_swapids(next);
 
     // start Ubcast+row swapping for second part of A
     HPL_pdlaswp_start(next, HPL_UPD_2);

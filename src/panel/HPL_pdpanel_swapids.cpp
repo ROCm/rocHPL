@@ -22,7 +22,7 @@ void HPL_pdpanel_swapids(HPL_T_panel* PANEL) {
   if(nprow == 1) {
     // unroll pivoting
     int* ipiv  = PANEL->ipiv;
-    int* permU = PANEL->ipiv + jb;
+    int* permU = PANEL->IWORK;
     int* ipl   = permU + 2 * jb;
     int* ipID  = ipl + 1;
 
@@ -40,39 +40,25 @@ void HPL_pdpanel_swapids(HPL_T_panel* PANEL) {
       }
     }
 
-    int* dpermU = PANEL->dipiv;
-
-    // send pivoting ids to device
-    CHECK_HIP_ERROR(hipMemcpyAsync(dpermU,
-                                   permU,
-                                   2 * jb * sizeof(int),
-                                   hipMemcpyHostToDevice,
-                                   dataStream));
-
   } else {
 
-    int* permU   = PANEL->ipiv + jb;
-    int* lindxU  = permU + jb;
-    int* lindxA  = lindxU + jb;
-    int* lindxAU = lindxA + jb;
-    int* ipA     = lindxAU + jb;
-    int* iplen   = ipA + 1;
+    int* permU    = PANEL->IWORK;
+    int* lindxU   = permU + jb;
+    int* lindxA   = lindxU + jb;
+    int* lindxAU  = lindxA + jb;
 
-    int* ipl   = iplen + nprow + 1;
-    int* ipID  = ipl + 1;
-    int* iwork = ipID + 4 * jb;
+    int  k       = (int)((unsigned int)(jb) << 1);
+    int* ipl     = lindxAU + jb;
+    int* ipID    = ipl + 1;
+    int* ipA     = ipID + ((unsigned int)(k) << 1);
+    int* iplen   = ipA + 1;
+    int* ipmap   = iplen + PANEL->grid->nprow + 1;
+    int* ipmapm1 = ipmap + PANEL->grid->nprow;
+    int* upiv    = ipmapm1 + PANEL->grid->nprow;
+    int* iwork   = upiv + PANEL->mp;
 
     HPL_pipid(PANEL, ipl, ipID);
     HPL_plindx(
         PANEL, *ipl, ipID, ipA, lindxU, lindxAU, lindxA, iplen, permU, iwork);
-
-    int* dpermU = PANEL->dipiv;
-
-    // send pivoting ids to device
-    CHECK_HIP_ERROR(hipMemcpyAsync(dpermU,
-                                   permU,
-                                   (4 * jb + 1 + nprow + 1) * sizeof(int),
-                                   hipMemcpyHostToDevice,
-                                   dataStream));
   }
 }

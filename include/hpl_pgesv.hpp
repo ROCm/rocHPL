@@ -91,9 +91,6 @@ typedef struct HPL_S_pmat {
 
   HPL_T_panel panel[2];
 
-  // host panel for pdfact
-  double* hA0;
-
   // row swapping workspaces
   double* W0;
   double* W1;
@@ -107,6 +104,7 @@ typedef struct HPL_S_pmat {
 extern hipEvent_t swapStartEvent[HPL_N_UPD], update[HPL_N_UPD];
 extern hipEvent_t swapUCopyEvent[HPL_N_UPD], swapWCopyEvent[HPL_N_UPD];
 extern hipEvent_t dgemmStart[HPL_N_UPD], dgemmStop[HPL_N_UPD];
+extern hipEvent_t panelCopy;
 
 /*
  * ---------------------------------------------------------------------

@@ -14,13 +14,12 @@ void HPL_pdpanel_SendToHost(HPL_T_panel* PANEL) {
 
   if((PANEL->grid->mycol != PANEL->pcol) || (jb <= 0)) return;
 
-  if(PANEL->mp > 0)
-    CHECK_HIP_ERROR(hipMemcpy2DAsync(PANEL->hA0,
-                                     PANEL->lda0 * sizeof(double),
-                                     PANEL->A,
-                                     PANEL->lda * sizeof(double),
-                                     PANEL->mp * sizeof(double),
-                                     jb,
-                                     hipMemcpyDeviceToHost,
-                                     dataStream));
+  HPL_dlacpy_gpu(PANEL->mp,
+                 PANEL->jb,
+                 PANEL->A,
+                 PANEL->lda,
+                 PANEL->A0,
+                 PANEL->lda0);
+
+  CHECK_HIP_ERROR(hipEventRecord(panelCopy, computeStream));
 }

@@ -94,13 +94,19 @@ void HPL_pdlaswp_start(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    */
   if((n <= 0) || (jb <= 0)) return;
 
-  int* permU   = PANEL->dipiv;
-  int* lindxU  = permU + jb;
-  int* lindxA  = lindxU + jb;
-  int* lindxAU = lindxA + jb;
+  int* permU    = PANEL->IWORK;
+  int* lindxU   = permU + jb;
+  int* lindxA   = lindxU + jb;
+  int* lindxAU  = lindxA + jb;
 
-  int* ipA   = PANEL->ipiv + 5 * jb;
-  int* iplen = ipA + 1;
+  k         = (int)((unsigned int)(jb) << 1);
+  int* ipl       = lindxAU + jb;
+  int* ipID      = ipl + 1;
+  int* ipA       = ipID + ((unsigned int)(k) << 1);
+  int* iplen     = ipA + 1;
+  int* ipcounts  = iplen + nprow + 1;
+  int* ipoffsets = ipcounts + nprow;
+  int* iwork     = ipoffsets + nprow;
 
   /*
    * For i in [0..2*jb),  lindxA[i] is the offset in A of a row that ulti-
@@ -223,15 +229,19 @@ void HPL_pdlaswp_exchange(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    */
   if((n <= 0) || (jb <= 0)) return;
 
-  int* permU   = PANEL->dipiv;
-  int* lindxU  = permU + jb;
-  int* lindxA  = lindxU + jb;
-  int* lindxAU = lindxA + jb;
+  int* permU    = PANEL->IWORK;
+  int* lindxU   = permU + jb;
+  int* lindxA   = lindxU + jb;
+  int* lindxAU  = lindxA + jb;
 
-  int* ipA       = PANEL->ipiv + 5 * jb;
+  k         = (int)((unsigned int)(jb) << 1);
+  int* ipl       = lindxAU + jb;
+  int* ipID      = ipl + 1;
+  int* ipA       = ipID + ((unsigned int)(k) << 1);
   int* iplen     = ipA + 1;
   int* ipcounts  = iplen + nprow + 1;
   int* ipoffsets = ipcounts + nprow;
+  int* iwork     = ipoffsets + nprow;
 
   /* Set MPI message counts and offsets */
   ipcounts[0]  = (iplen[1] - iplen[0]) * LDU;
@@ -374,13 +384,19 @@ void HPL_pdlaswp_end(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
    */
   if((n <= 0) || (jb <= 0)) return;
 
-  int* permU   = PANEL->dipiv;
-  int* lindxU  = permU + jb;
-  int* lindxA  = lindxU + jb;
-  int* lindxAU = lindxA + jb;
+  int* permU    = PANEL->IWORK;
+  int* lindxU   = permU + jb;
+  int* lindxA   = lindxU + jb;
+  int* lindxAU  = lindxA + jb;
 
-  int* ipA   = PANEL->ipiv + 5 * jb;
-  int* iplen = ipA + 1;
+  k         = (int)((unsigned int)(jb) << 1);
+  int* ipl       = lindxAU + jb;
+  int* ipID      = ipl + 1;
+  int* ipA       = ipID + ((unsigned int)(k) << 1);
+  int* iplen     = ipA + 1;
+  int* ipcounts  = iplen + nprow + 1;
+  int* ipoffsets = ipcounts + nprow;
+  int* iwork     = ipoffsets + nprow;
 
   // just local swaps if we're 1xQ
   if(nprow == 1) {

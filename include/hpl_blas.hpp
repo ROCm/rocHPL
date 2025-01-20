@@ -27,7 +27,6 @@
 
 extern rocblas_handle handle;
 extern hipStream_t    computeStream;
-extern hipStream_t    dataStream;
 
 #define CHECK_HIP_ERROR(val) hipCheck((val), #val, __FILE__, __LINE__)
 inline void hipCheck(hipError_t        err,

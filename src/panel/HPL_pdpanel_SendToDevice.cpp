@@ -10,14 +10,4 @@
 #include "hpl.hpp"
 
 void HPL_pdpanel_SendToDevice(HPL_T_panel* PANEL) {
-  const int jb = PANEL->jb;
-
-  if((PANEL->grid->mycol != PANEL->pcol) || (jb <= 0)) return;
-
-  if(PANEL->len > 0)
-    CHECK_HIP_ERROR(hipMemcpyAsync(PANEL->A0,
-                                   PANEL->hA0,
-                                   PANEL->len * sizeof(double),
-                                   hipMemcpyHostToDevice,
-                                   dataStream));
 }
