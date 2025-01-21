@@ -47,12 +47,11 @@ int HPL_pdwarmup(HPL_T_test* TEST,
     if(GRID->local_mycol == c) { HPL_pdfact(p0); }
     HPL_barrier(GRID->all_comm);
   }
-  p0->A -= p0->jb * static_cast<size_t>(p0->lda);
   HPL_pdpanel_SendToDevice(p0);
   HPL_pdpanel_swapids(p0);
   HPL_pdpanel_Wait(p0);
-
-  HPL_dlatcpy_gpu(mm, nn, p0->L1, p0->jb, p0->A, p0->lda);
+  HPL_pdpanel_copyL1(p0);
+  p0->A -= p0->jb * static_cast<size_t>(p0->lda);
 
   // Broadcast to register with MPI
   p0->pcol = 0;
@@ -86,12 +85,11 @@ int HPL_pdwarmup(HPL_T_test* TEST,
     if(GRID->local_mycol == c) { HPL_pdfact(p1); }
     HPL_barrier(GRID->all_comm);
   }
-  p1->A -= p1->jb * static_cast<size_t>(p1->lda);
   HPL_pdpanel_SendToDevice(p1);
   HPL_pdpanel_swapids(p1);
   HPL_pdpanel_Wait(p1);
-
-  HPL_dlatcpy_gpu(mm, nn, p1->L1, p1->jb, p1->A, p1->lda);
+  HPL_pdpanel_copyL1(p1);
+  p1->A -= p1->jb * static_cast<size_t>(p1->lda);
 
   // Broadcast to register with MPI
   p1->pcol = 0;
