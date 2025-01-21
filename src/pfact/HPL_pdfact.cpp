@@ -80,7 +80,10 @@ void HPL_pdfact(HPL_T_panel* PANEL) {
 
   HPL_TracingPush("pdfact");
 
-#pragma omp parallel shared(max_value, max_index)
+  const int maxThreads = omp_get_max_threads();
+  const int numThreads = std::min(maxThreads, (PANEL->mp+jb-1)/jb);
+
+#pragma omp parallel shared(max_value, max_index) num_threads(numThreads)
   {
     const int thread_rank = omp_get_thread_num();
     const int thread_size = omp_get_num_threads();
