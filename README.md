@@ -5,8 +5,9 @@ rocHPL is a benchmark based on the [HPL][] benchmark application, implemented on
 * Git
 * CMake (3.10 or later)
 * MPI (Optional)
-* AMD [ROCm] platform (3.5 or later)
+* AMD [ROCm] platform (3.5 or later) with all SDK packages
 * [rocBLAS][]
+* libstdc++ development package
 
 ## Quickstart rocHPL build and install
 
