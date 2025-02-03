@@ -48,6 +48,7 @@ void HPL_pdpanel_swapids(HPL_T_panel* PANEL) {
                                    2 * jb * sizeof(int),
                                    hipMemcpyHostToDevice,
                                    dataStream));
+    CHECK_HIP_ERROR(hipStreamSynchronize(dataStream));
 
   } else {
 
@@ -74,5 +75,6 @@ void HPL_pdpanel_swapids(HPL_T_panel* PANEL) {
                                    (4 * jb + 1 + nprow + 1) * sizeof(int),
                                    hipMemcpyHostToDevice,
                                    dataStream));
+    CHECK_HIP_ERROR(hipStreamSynchronize(dataStream));
   }
 }

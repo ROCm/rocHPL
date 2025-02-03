@@ -31,7 +31,6 @@ option(HPL_DETAILED_TIMING "Enable detailed timers during run" OFF)
 option(HPL_TRACING         "Annotate profiler traces with rocTX markers" OFF)
 
 option(ROCM_PATH "Path to ROCm install" /opt/rocm)
-option(HPL_BLAS_DIR "Path to CPU BLAS library" ${CMAKE_CURRENT_SOURCE_DIR}/tpl/openblas)
 option(HPL_MPI_DIR  "Path to MPI library" ${CMAKE_CURRENT_SOURCE_DIR}/tpl/openmpi)
 
 set(CMAKE_INSTALL_PREFIX "rocHPL" CACHE PATH "Install path prefix, prepended onto install directories")
@@ -154,7 +153,6 @@ target_link_libraries(rochpl PRIVATE MPI::MPI_CXX)
 target_link_libraries(rochpl PRIVATE OpenMP::OpenMP_CXX)
 
 # Target link libraries
-target_link_libraries(rochpl PRIVATE BLAS::BLAS)
 target_link_libraries(rochpl PRIVATE roc::rocblas)
 
 if(HPL_TRACING)

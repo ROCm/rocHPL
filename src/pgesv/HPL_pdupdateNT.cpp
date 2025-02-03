@@ -105,7 +105,7 @@ void HPL_pdupdateNT(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
                                       Aptr,
                                       lda));
 
-    HPL_dlatcpy_gpu(n, jb, Aptr, lda, Uptr, LDU);
+    HPL_dlatcpy(n, jb, Aptr, lda, Uptr, LDU);
   } else {
     /*
      * Compute redundantly row block of U and update trailing submatrix
@@ -145,7 +145,7 @@ void HPL_pdupdateNT(HPL_T_panel* PANEL, const HPL_T_UPD UPD) {
                                       lda));
     CHECK_HIP_ERROR(hipEventRecord(dgemmStop[UPD], stream));
 
-    if(PANEL->grid->nprow > 1) HPL_dlatcpy_gpu(jb, n, Uptr, LDU, Aptr, lda);
+    if(PANEL->grid->nprow > 1) HPL_dlatcpy(jb, n, Uptr, LDU, Aptr, lda);
   } else {
     CHECK_HIP_ERROR(hipEventRecord(dgemmStart[UPD], stream));
     CHECK_ROCBLAS_ERROR(rocblas_dgemm(handle,

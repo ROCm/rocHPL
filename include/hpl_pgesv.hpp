@@ -91,22 +91,27 @@ typedef struct HPL_S_pmat {
 
   HPL_T_panel panel[2];
 
-  // host panel for pdfact
-  double* hA0;
-
   // row swapping workspaces
   double* W0;
   double* W1;
   double* W2;
 
   // pfact workspaces
-  double* host_workspace;
+  int*      loc_workspace;
+  double*   max_workspace;
+  double*   dev_workspace;
+  uint32_t* barrier_space;
+  int32_t*  host_flag;
+  double*   host_workspace;
+
+  int pfact_max_blocks;
 
 } HPL_T_pmat;
 
 extern hipEvent_t swapStartEvent[HPL_N_UPD], update[HPL_N_UPD];
 extern hipEvent_t swapUCopyEvent[HPL_N_UPD], swapWCopyEvent[HPL_N_UPD];
 extern hipEvent_t dgemmStart[HPL_N_UPD], dgemmStop[HPL_N_UPD];
+extern hipEvent_t pfactStart, pfactStop;
 
 /*
  * ---------------------------------------------------------------------

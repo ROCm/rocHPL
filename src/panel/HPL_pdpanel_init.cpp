@@ -168,10 +168,6 @@ void HPL_pdpanel_init(HPL_T_grid*  GRID,
   PANEL->L1    = PANEL->A0 + ml2 * JB;
   PANEL->dipiv = reinterpret_cast<int*>(PANEL->L1 + JB * JB);
 
-  PANEL->hA0 = A->hA0;
-  PANEL->hL2 = PANEL->hA0 + (myrow == icurrow ? JB : 0);
-  PANEL->hL1 = PANEL->hA0 + ml2 * JB;
-
   PANEL->ipiv = PANEL->IWORK;
 
   nu  = Mmax(0, (mycol == icurcol ? nq - JB : nq));

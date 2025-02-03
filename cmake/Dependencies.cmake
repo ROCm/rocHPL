@@ -28,51 +28,8 @@
 # Git
 find_package(Git REQUIRED)
 
-#Look for a BLAS lib
-# For some reason cmake doesn't let us manually specify a search path in FindBLAS,
-# so let's add our own libraries
-get_filename_component(HPL_BLAS_DIR ${HPL_BLAS_DIR} ABSOLUTE)
-
-# Look for BLIS in the provided path
-find_library(BLAS_LIBRARIES NAMES blis
-             PATHS ${HPL_BLAS_DIR}
-             NO_DEFAULT_PATH)
-
-if (NOT BLAS_LIBRARIES)
-  # If we dont find BLIS, look for openblas
-  find_library(BLAS_LIBRARIES NAMES openblas
-               PATHS ${HPL_BLAS_DIR}
-               NO_DEFAULT_PATH)
-endif()
-if (NOT BLAS_LIBRARIES)
-  # If we dont find BLIS or openBLAS, look for MKL
-  find_library(BLAS_LIBRARIES NAMES mkl_core
-               PATHS ${HPL_BLAS_DIR}
-               NO_DEFAULT_PATH)
-  find_library(BLAS_SEQ_LIBRARIES NAMES mkl_sequential
-               PATHS ${HPL_BLAS_DIR}
-               NO_DEFAULT_PATH)
-  find_library(BLAS_LP64_LIBRARIES NAMES mkl_intel_lp64
-               PATHS ${HPL_BLAS_DIR}
-               NO_DEFAULT_PATH)
-endif()
-
-if (BLAS_LIBRARIES)
-  message(STATUS "Found BLAS: ${BLAS_LIBRARIES}")
-else()
-  # If we still havent found a blas library, maybe cmake will?
-  find_package(BLAS REQUIRED)
-endif()
-add_library(BLAS::BLAS IMPORTED INTERFACE)
-set_property(TARGET BLAS::BLAS PROPERTY INTERFACE_LINK_LIBRARIES  "${BLAS_LP64_LIBRARIES};${BLAS_SEQ_LIBRARIES};${BLAS_LIBRARIES}")
-
 # Find OpenMP package
-find_package(OpenMP)
-if (NOT OPENMP_FOUND)
-  message("-- OpenMP not found. Compiling WITHOUT OpenMP support.")
-else()
-  option(HPL_OPENMP "Compile WITH OpenMP support." ON)
-endif()
+find_package(OpenMP REQUIRED)
 
 # MPI
 set(MPI_HOME ${HPL_MPI_DIR})
@@ -81,6 +38,20 @@ find_package(MPI REQUIRED)
 # Add some paths
 list(APPEND CMAKE_PREFIX_PATH ${ROCBLAS_PATH} ${ROCM_PATH} )
 list(APPEND CMAKE_MODULE_PATH ${ROCM_PATH}/lib/cmake/hip )
+
+# Find HIP package
+find_package(HIP REQUIRED)
+
+# rocblas
+find_package(rocblas REQUIRED)
+
+get_target_property(rocblas_LIBRARIES roc::rocblas IMPORTED_LOCATION_RELEASE)
+
+message("-- rocBLAS version:      ${rocblas_VERSION}")
+message("-- rocBLAS include dirs: ${rocblas_INCLUDE_DIRS}")
+message("-- rocBLAS libraries:    ${rocblas_LIBRARIES}")
+
+get_filename_component(ROCBLAS_LIB_PATH ${rocblas_LIBRARIES} DIRECTORY)
 
 if(HPL_TRACING)
   find_library(ROCTRACER NAMES roctracer64
@@ -106,20 +77,6 @@ if(HPL_TRACING)
     IMPORTED_LOCATION "${ROCTX}"
     IMPORTED_SONAME "libroctx64.so")
 endif()
-
-# Find HIP package
-find_package(HIP REQUIRED)
-
-# rocblas
-find_package(rocblas REQUIRED)
-
-get_target_property(rocblas_LIBRARIES roc::rocblas IMPORTED_LOCATION_RELEASE)
-
-message("-- rocBLAS version:      ${rocblas_VERSION}")
-message("-- rocBLAS include dirs: ${rocblas_INCLUDE_DIRS}")
-message("-- rocBLAS libraries:    ${rocblas_LIBRARIES}")
-
-get_filename_component(ROCBLAS_LIB_PATH ${rocblas_LIBRARIES} DIRECTORY)
 
 # ROCm cmake package
 find_package(ROCM QUIET CONFIG PATHS ${CMAKE_PREFIX_PATH})

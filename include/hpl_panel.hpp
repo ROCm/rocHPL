@@ -39,9 +39,6 @@ typedef struct HPL_S_panel {
   double*            U0;    /* ptr to U */
   double*            U1;    /* ptr to U1 */
   double*            U2;    /* ptr to U2 */
-  double*            hA0;   /* ptr to host copy of trailing part of A */
-  double*            hL2;   /* ptr to host copy of L */
-  double*            hL1;   /* ptr to host copy of jb x jb upper block of A */
   int*               IWORK; /* integer workspace for swapping */
   int*               ipiv;
   int*               dipiv;

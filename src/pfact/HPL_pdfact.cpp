@@ -62,49 +62,55 @@ void HPL_pdfact(HPL_T_panel* PANEL) {
    * ---------------------------------------------------------------------
    */
 
-  int jb, i;
-
-  jb = PANEL->jb;
+  int jb = PANEL->jb;
   PANEL->n -= jb;
   PANEL->ja += jb;
 
   if((PANEL->grid->mycol != PANEL->pcol) || (jb <= 0)) return;
+
 #ifdef HPL_DETAILED_TIMING
   HPL_ptimer(HPL_TIMING_RPFACT);
 #endif
+
+  /*Copy current panel into workspace*/
+  HPL_dlacpy(PANEL->mp,
+             PANEL->jb,
+             PANEL->A,
+             PANEL->lda,
+             PANEL->A0,
+             PANEL->lda0);
+
   /*
    * Factor the panel - Update the panel pointers
    */
-  double max_value[512];
-  int    max_index[512];
-
   HPL_TracingPush("pdfact");
 
-  const int maxThreads = omp_get_max_threads();
-  const int numThreads = std::min(maxThreads, (PANEL->mp+jb-1)/jb);
+  hipStream_t stream;
+  CHECK_ROCBLAS_ERROR(rocblas_get_stream(handle, &stream));
+  CHECK_HIP_ERROR(hipEventRecord(pfactStart, stream));
 
-#pragma omp parallel shared(max_value, max_index) num_threads(numThreads)
-  {
-    const int thread_rank = omp_get_thread_num();
-    const int thread_size = omp_get_num_threads();
-    assert(thread_size <= 512);
+  PANEL->algo->rffun(PANEL,
+                     PANEL->mp,
+                     jb,
+                     0);
 
-    PANEL->algo->rffun(PANEL,
-                       PANEL->mp,
-                       jb,
-                       0,
-                       PANEL->pmat->host_workspace,
-                       thread_rank,
-                       thread_size,
-                       max_value,
-                       max_index);
-  }
+  CHECK_HIP_ERROR(hipEventRecord(pfactStop, stream));
 
   HPL_TracingPop();
+
+  /*Copy L1 back into A*/
+  if (PANEL->grid->myrow == PANEL->prow) {
+    if(PANEL->algo->L1notran) {
+      HPL_dlacpy(jb, jb, PANEL->L1, jb, PANEL->A, PANEL->lda);
+    } else {
+      HPL_dlatcpy(jb, jb, PANEL->L1, jb, PANEL->A, PANEL->lda);
+    }
+  }
 
   PANEL->A = Mptr(PANEL->A, 0, jb, PANEL->lda);
   PANEL->nq -= jb;
   PANEL->jj += jb;
+
 #ifdef HPL_DETAILED_TIMING
   HPL_ptimer(HPL_TIMING_RPFACT);
 #endif

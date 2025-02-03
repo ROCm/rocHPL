@@ -16,7 +16,6 @@ function display_help()
   echo "    [--prefix] Path to rocHPL install location (Default: build/rocHPL)"
   echo "    [--with-rocm=<dir>] Path to ROCm install (Default: /opt/rocm)"
   echo "    [--with-rocblas=<dir>] Path to rocBLAS library (Default: /opt/rocm/rocblas)"
-  echo "    [--with-cpublas=<dir>] Path to external CPU BLAS library (Default: clone+build BLIS)"
   echo "    [--with-mpi=<dir>] Path to external MPI install (Default: clone+build OpenMPI)"
   echo "    [--verbose-print] Verbose output during HPL setup (Default: true)"
   echo "    [--progress-report] Print progress report to terminal during HPL run (Default: true)"
@@ -101,37 +100,6 @@ check_exit_code( )
   fi
 }
 
-
-# Install BLIS in rochpl/tpl
-install_blis( )
-{
-  if [ ! -d "./tpl/blis" ]; then
-    mkdir -p tpl && cd tpl
-    git clone https://github.com/amd/blis --branch 4.2
-    check_exit_code 2
-    cd blis; ./configure --prefix=${PWD} --enable-cblas --disable-sup-handling auto;
-    check_exit_code 2
-    make -j$(nproc)
-    check_exit_code 2
-    make install -j$(nproc)
-    check_exit_code 2
-    cd ../..
-  elif [ ! -f "./tpl/blis/lib/libblis.so" ]; then
-    cd tpl/blis; ./configure --prefix=${PWD} --enable-cblas --disable-sup-handling auto;
-    check_exit_code 2
-    make -j$(nproc)
-    check_exit_code 2
-    make install -j$(nproc)
-    check_exit_code 2
-    cd ../..
-  fi
-
-  # Check for successful build
-  if [ ! -f "./tpl/blis/lib/libblis.so" ]; then
-    echo "Error: BLIS install unsuccessful."
-    exit_with_error 2
-  fi
-}
 
 # Clone and build OpenMPI+UCX in rochpl/tpl
 install_openmpi( )
@@ -250,7 +218,6 @@ build_release=true
 with_rocm=/opt/rocm
 with_mpi=tpl/openmpi
 with_rocblas=/opt/rocm/rocblas
-with_cpublas=tpl/blis/lib
 verbose_print=true
 progress_report=true
 detailed_timing=true
@@ -263,7 +230,7 @@ enable_tracing=false
 # check if we have a modern version of getopt that can handle whitespace and long parameters
 getopt -T
 if [[ $? -eq 4 ]]; then
-  GETOPT_PARSE=$(getopt --name "${0}" --longoptions help,debug,prefix:,with-rocm:,with-mpi:,with-rocblas:,with-cpublas:,verbose-print:,progress-report:,detailed-timing:,enable-tracing: --options hg -- "$@")
+  GETOPT_PARSE=$(getopt --name "${0}" --longoptions help,debug,prefix:,with-rocm:,with-mpi:,with-rocblas:,verbose-print:,progress-report:,detailed-timing:,enable-tracing: --options hg -- "$@")
 else
   echo "Need a new version of getopt"
   exit_with_error 1
@@ -296,9 +263,6 @@ while true; do
         shift 2 ;;
     --with-rocblas)
         with_rocblas=${2}
-        shift 2 ;;
-    --with-cpublas)
-        with_cpublas=${2}
         shift 2 ;;
     --verbose-print)
         verbose_print=${2}
@@ -338,15 +302,6 @@ export PATH=${PATH}:${ROCM_PATH}/bin
 
 pushd .
   # #################################################
-  # BLAS
-  # #################################################
-  if [[ "${with_cpublas}" == tpl/blis/lib ]]; then
-
-    install_blis
-
-  fi
-
-  # #################################################
   # MPI
   # #################################################
   if [[ "${with_mpi}" == tpl/openmpi ]]; then
@@ -359,7 +314,7 @@ pushd .
   # #################################################
   # configure & build
   # #################################################
-  cmake_common_options="-DCMAKE_INSTALL_PREFIX=${install_prefix} -DHPL_BLAS_DIR=${with_cpublas}
+  cmake_common_options="-DCMAKE_INSTALL_PREFIX=${install_prefix}
                         -DHPL_MPI_DIR=${with_mpi} -DROCM_PATH=${with_rocm} -DROCBLAS_PATH=${with_rocblas}"
 
   # build type
