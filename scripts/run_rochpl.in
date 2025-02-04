@@ -264,216 +264,74 @@ if [[ $((Q % q)) -gt 0 ]]; then
   exit 1
 fi
 
-# count the number of physical cores on node
-num_cpu_cores=$(lscpu | grep "Core(s)" | awk '{print $4}')
-num_cpu_sockets=$(lscpu | grep Socket | awk '{print $2}')
-total_cpu_cores=$(($num_cpu_cores*$num_cpu_sockets))
-
-# Ranks in different processes rows will take distinct chunks of cores
-row_stride=$((total_cpu_cores/p))
-col_stride=$((row_stride/q))
-
 myp=$((rank%p))
 myq=$((rank/p))
 
-#Although ranks are column-major order, we select GPUs in row-major order on node
-mygpu=$((myq+myp*q))
+#construct a list of all cpus, sorted by core
+cpulist=$(lscpu --parse=CPU,CORE,NODE | awk '!/#/' | tr ',' "\t" | sort -k 2 -g -s)
 
-# Try to detect special Bard-peak core mapping
-if [[ -n ${HPL_PLATFORM+x} ]]; then
-  platform=$HPL_PLATFORM
+#construct list of devices and their numa affinities
+devicelist=$(${rocm_dir}/bin/rocm-smi --csv --showtoponuma | tail -n +2 | tr ',' "\t")
+
+#count the cpus per core
+threads_per_core=$(echo "${cpulist}" | grep -c ".*	0	.*")
+
+#remove the extra cpus on each core to make a list of just physical cores, then sort by numa domain
+corelist=$(echo "$cpulist" | awk -v tpc=${threads_per_core} 'NR%tpc' | sort -k 3 -g -s)
+
+#count numa domains
+line=($(echo "$cpulist" | tail -n 1))
+n_numa=$((line[2]+1))
+
+numa_core_counts=()
+numa_proc_counts=()
+for i in $(seq 1 ${n_numa}); do numa_core_counts+=(0); numa_proc_counts+=(0); done
+
+#parse the list of cpus to array and count cpus in each numa
+cpus=()
+while read -a line; do
+  cpus+=(${line[0]})
+  ((numa_core_counts[${line[2]}]++))
+done <<< ${corelist}
+
+numa_core_offsets=(0)
+for i in $(seq 1 $((n_numa-1))); do numa_core_offsets+=($((numa_core_offsets[$((i-1))] + numa_core_counts[$i]))); done
+
+#parse device to numa mapping
+device_to_numa=()
+while read -a line; do
+  device_to_numa+=(${line[2]})
+done <<< ${devicelist}
+
+n_devices=$(echo "${devicelist}" | grep -c "card")
+
+mygpu=$(((rank)%n_devices))
+mynuma=${device_to_numa[mygpu]}
+
+for i in $(seq 0 $((size-1))); do
+  numa=${device_to_numa[$((i%n_devices))]}
+  ((numa_proc_counts[numa]++))
+done
+
+omp_num_threads=$((numa_core_counts[mynuma]/numa_proc_counts[mynuma]))
+
+core_offset=${numa_core_offsets[mynuma]}
+for i in $(seq 0 $((rank-1))); do
+  numa=${device_to_numa[$((i%n_devices))]}
+  if [[ $numa -eq $mynuma ]]; then
+    core_offset=$((core_offset + omp_num_threads))
+  fi
+done
+
+omp_places="{${cpus[core_offset]}}"
+for c in $(seq 1 $((omp_num_threads-1))); do
+  omp_places+=",{${cpus[core_offset+c]}}"
+done
+
+if [[ $omp_num_threads -gt 1 ]]; then
+  places="{${cpus[core_offset]}-${cpus[core_offset+$((omp_num_threads-1))]}}"
 else
-  platform=$(cat /sys/class/dmi/id/product_name)
-fi
-
-if [[ "$platform" == "BardPeak" || "$platform" == "HPE_CRAY_EX235A" ]]; then
-  # Special core mapping for BardPeak
-
-  # Debug
-  # if [[ $globalRank == 0 ]]; then
-  #   echo "BardPeak platform detected"
-  # fi
-
-  # Sanity check
-  if [[ $size -gt 8 ]]; then
-    echo "Unsupported number of ranks on BardPeak platform; aborting";
-    exit 1
-  fi
-
-  # GCD0 cores="48-55"
-  # GCD1 cores="56-63"
-  # GCD2 cores="16-23"
-  # GCD3 cores="24-31"
-  # GCD4 cores="0-7"
-  # GCD5 cores="8-15"
-  # GCD6 cores="32-39"
-  # GCD7 cores="40-47"
-
-  root_cores=(48 56 16 24 0 8 32 40)
-  root_core=${root_cores[mygpu]}
-
-  # First omp place is the root core
-  omp_places="{$root_core}"
-
-  # First assign the CCD
-  for i in $(seq $((root_core+1)) $((root_core+8-1)))
-  do
-    omp_places+=",{$i}"
-  done
-  omp_num_threads=8
-
-  places="{$root_core-$((root_core+7))}"
-
-  # Loop through unassigned CCDs
-  for c in $(seq $((mygpu+size)) $size 7)
-  do
-    iroot_core=${root_cores[c]}
-    for i in $(seq $((iroot_core)) $((iroot_core+8-1)))
-    do
-      omp_places+=",{$i}"
-    done
-    omp_num_threads=$((omp_num_threads+8))
-    places+=",{$iroot_core-$((iroot_core+7))}"
-  done
-
-  if [[ "${oversubscribe}" == true ]]; then
-    # Add cores from different columns, without their root cores
-    for j in $(seq 0  $((q-1)))
-    do
-      if [[ "$j" == "$myq" ]]; then
-        continue
-      fi
-      for jj in $(seq 0 $size 7)
-      do
-        q_gpu=$((jj+j+myp*q))
-        q_core=$((root_cores[q_gpu]))
-        offset=$(( (q_gpu>=size) ? 0 : 1))
-        for i in $(seq $((q_core+offset)) $((q_core+8-1)))
-        do
-          omp_places+=",{$i}"
-        done
-        omp_num_threads=$((omp_num_threads+8-offset))
-        places+=",{$((q_core+offset))-$((q_core+7))}"
-      done
-    done
-  fi
-
-elif [[ "$platform" == "ParryPeak" || "$platform" == "Sh54p" || "$platform" == "HPE_CRAY_EX255a" ]]; then
-    # Special core mapping for ParryPeak
-
-    if [[ $(${rocm_dir}/bin/rocm-smi | grep SPX) ]]; then
-
-      # Sanity check
-      if [[ $size -gt 4 ]]; then
-        echo "Unsupported number of ranks on ParryPeak platform; aborting";
-        exit 1
-      fi
-
-      # GPU0 cores="0-23"
-      # GPU1 cores="24-47"
-      # GPU2 cores="48-71"
-      # GPU3 cores="72-95"
-
-      root_cores=(0 24 48 72)
-      num_cores=24
-
-    elif [[ $(${rocm_dir}/bin/rocm-smi | grep TPX) ]]; then
-
-      # Sanity check
-      if [[ $size -gt 12 ]]; then
-        echo "Unsupported number of ranks on ParryPeak platform; aborting";
-        exit 1
-      fi
-
-      # GPU0 cores="0-8"
-      # GPU1 cores="8-15"
-      # ...
-      # GPU10 cores="80-87"
-      # GPU11 cores="88-95"
-
-      root_cores=(0 8 16 24 32 40 48 56 64 72 80 88)
-      num_cores=8
-
-    elif [[ $(${rocm_dir}/bin/rocm-smi | grep CPX) ]]; then
-
-      # Sanity check
-      if [[ $size -gt 24 ]]; then
-        echo "Unsupported number of ranks on ParryPeak platform; aborting";
-        exit 1
-      fi
-
-      # GPU0 cores="0-3"
-      # GPU1 cores="4-7"
-      # ...
-      # GPU22 cores="88-91"
-      # GPU23 cores="92-95"
-
-      root_cores=(0 4 8 12 16 20 24 28 32 36 40 44 48 52 56 60 64 68 72 76 80 84 88 92)
-      num_cores=4
-
-    else
-      echo "Unable to determine partitioning mode on ParryPeak platform; aborting";
-      exit 1
-    fi
-
-    mygpu=$((myq*p+myp))
-
-    root_core=${root_cores[mygpu]}
-
-    # First omp place is the root core
-    omp_places="{$root_core}"
-
-    # First assign the socket
-    for i in $(seq $((root_core+1)) $((root_core+num_cores-1)))
-    do
-      omp_places+=",{$i}"
-    done
-    omp_num_threads=$num_cores
-
-    places="{$root_core-$((root_core+num_cores-1))}"
-
-else
-  # Default core mapping
-  root_core=$((myp*row_stride + myq*col_stride))
-
-  omp_num_threads=${col_stride}
-  # First omp place is the root core
-  omp_places="{$root_core}"
-
-  # Make contiuguous chunk of cores (to maximize L1/L2 locality)
-  for i in $(seq $((root_core+1)) $((root_core+col_stride-1)))
-  do
-    omp_places+=",{$i}"
-  done
-
-  if [[ $col_stride -gt 1 ]]; then
-    places="{$root_core-$((root_core+col_stride-1))}"
-  else
-    places="{$root_core}"
-  fi
-
-  if [[ "${oversubscribe}" == true ]]; then
-    # Add cores from different columns, without their root cores
-    for j in $(seq 0 $((q-1)))
-    do
-      if [[ "$j" == "$myq" ]]; then
-        continue
-      fi
-      q_core=$((myp*row_stride + j*col_stride))
-      for i in $(seq $((q_core+1)) $((q_core+col_stride-1)))
-      do
-        omp_places+=",{$i}"
-      done
-      omp_num_threads=$((omp_num_threads+col_stride-1))
-
-      if [[ $col_stride -gt 2 ]]; then
-        places+=",{$((q_core+1))-$((q_core+col_stride-1))}"
-      elif [[ $col_stride -gt 1 ]]; then
-        places+=",{$((q_core+1))}"
-      fi
-
-    done
-  fi
+  places="{${cpus[core_offset]}}"
 fi
 
 # Export OpenMP config
@@ -481,8 +339,10 @@ export OMP_NUM_THREADS=${omp_num_threads}
 export OMP_PLACES=${omp_places}
 export OMP_PROC_BIND=true
 
+export ROCR_VISIBLE_DEVICES=$mygpu
+
 if [[ $globalRank -lt $size ]]; then
-  echo "Node Binding: Process $rank [(p,q)=($myp,$myq)] CPU Cores: $omp_num_threads - $places"
+  echo "Node Binding: Process $rank [(p,q)=($myp,$myq)] GPU: $mygpu, CPU Cores: $omp_num_threads - $places"
 fi
 
 rochpl_args="-P ${P} -Q ${Q} -p ${p} -q ${q} -f ${frac} -it ${it}"
