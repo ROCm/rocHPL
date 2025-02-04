@@ -470,12 +470,8 @@ public:
 
   barrier(uint32_t* ptr, uint32_t _expected):
     count(ptr[0]),
-    gen(ptr[1])
-  {
-    count.store(0, memory_order_relaxed);
-    gen.store(0, memory_order_relaxed);
-    expected = _expected;
-  }
+    gen(ptr[1]),
+    expected(_expected) {}
 
   __device__ inline arrival_token arrive(memory_order order = memory_order_seq_cst, uint32_t n = 1) {
     //get generation number for this barrier
