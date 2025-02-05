@@ -102,9 +102,9 @@ filename=HPL.dat
 inputfile=false
 cmdrun=false
 
-export LD_LIBRARY_PATH=${rocblas_dir}:${blas_dir}:${rocm_dir}/lib:$LD_LIBRARY_PATH
+devices=
 
-oversubscribe=true
+export LD_LIBRARY_PATH=${rocblas_dir}:${blas_dir}:${rocm_dir}/lib:$LD_LIBRARY_PATH
 
 # #################################################
 # Parameter parsing
@@ -113,7 +113,7 @@ oversubscribe=true
 # check if we have a modern version of getopt that can handle whitespace and long parameters
 getopt -T
 if [[ $? -eq 4 ]]; then
-  GETOPT_PARSE=$(getopt --name "${0}" --longoptions NB:,it:,help,version, --options hP:Q:p:q:N:i:f: -- "$@")
+  GETOPT_PARSE=$(getopt --name "${0}" --longoptions NB:,it:,help,version,devices:, --options hP:Q:p:q:N:i:f: -- "$@")
 else
   echo "Need a new version of getopt"
   exit 1
@@ -165,6 +165,9 @@ while true; do
     -i)
         filename=${2}
         inputfile=true
+        shift 2 ;;
+    --devices)
+        devices=${2}
         shift 2 ;;
     --) shift ; break ;;
     *)  echo "Unexpected command line parameter received; aborting";
@@ -303,13 +306,30 @@ while read -a line; do
   device_to_numa+=(${line[2]})
 done <<< ${devicelist}
 
-n_devices=$(echo "${devicelist}" | grep -c "card")
+rank_to_device=()
 
-mygpu=$(((rank)%n_devices))
+if [ ! -z "${devices}" ]; then
+	IFS=',' read -r -a device_array <<< "$devices"
+	n_devices=${#device_array[@]}
+  for i in $(seq 0 $((size-1))); do
+    rank_to_device+=(${device_array[$((i%n_devices))]})
+  done
+else
+	n_devices=$(echo "${devicelist}" | grep -c "card")
+  for i in $(seq 0 $((size-1))); do
+    rank_to_device+=($((i%n_devices)))
+  done
+fi
+mygpu=${rank_to_device[rank]}
 mynuma=${device_to_numa[mygpu]}
 
+rank_to_numa=()
 for i in $(seq 0 $((size-1))); do
-  numa=${device_to_numa[$((i%n_devices))]}
+  rank_to_numa+=(${device_to_numa[${rank_to_device[$((i%n_devices))]}]})
+done
+
+for i in $(seq 0 $((size-1))); do
+  numa=${rank_to_numa[$i]}
   ((numa_proc_counts[numa]++))
 done
 
@@ -317,7 +337,7 @@ omp_num_threads=$((numa_core_counts[mynuma]/numa_proc_counts[mynuma]))
 
 core_offset=${numa_core_offsets[mynuma]}
 for i in $(seq 0 $((rank-1))); do
-  numa=${device_to_numa[$((i%n_devices))]}
+  numa=${rank_to_numa[$i]}
   if [[ $numa -eq $mynuma ]]; then
     core_offset=$((core_offset + omp_num_threads))
   fi
