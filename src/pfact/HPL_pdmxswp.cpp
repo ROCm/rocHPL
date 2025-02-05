@@ -71,7 +71,7 @@ void HPL_pdmxswp(HPL_T_panel* PANEL,
    * ---------------------------------------------------------------------
    */
 
-  double *Wwork;
+  double*     Wwork;
   HPL_T_grid* grid;
   MPI_Comm    comm;
   int         cnt0, icurrow, myrow, nprow;
@@ -89,10 +89,10 @@ void HPL_pdmxswp(HPL_T_panel* PANEL,
   int NB  = PANEL->jb;
   icurrow = PANEL->prow;
 
-  cnt0 = 4 + 2 * NB;
+  cnt0  = 4 + 2 * NB;
   Wwork = WORK + cnt0;
 
-  if (M>0) {
+  if(M > 0) {
     int ilindx = static_cast<int>(WORK[1]);
     int kk     = PANEL->ii + II + (ilindx);
     int igindx = 0;

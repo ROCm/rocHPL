@@ -114,15 +114,15 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   mat->A = nullptr;
   mat->X = nullptr;
 
-  mat->W0  = nullptr;
-  mat->W1  = nullptr;
-  mat->W2  = nullptr;
+  mat->W0 = nullptr;
+  mat->W1 = nullptr;
+  mat->W2 = nullptr;
 
-  mat->loc_workspace = nullptr;
-  mat->max_workspace = nullptr;
-  mat->dev_workspace = nullptr;
-  mat->barrier_space = nullptr;
-  mat->host_flag = nullptr;
+  mat->loc_workspace  = nullptr;
+  mat->max_workspace  = nullptr;
+  mat->dev_workspace  = nullptr;
+  mat->barrier_space  = nullptr;
+  mat->host_flag      = nullptr;
   mat->host_workspace = nullptr;
 
   mat->panel[0].A0 = nullptr;
@@ -271,12 +271,14 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   // Workspaces for pdfact
   numbytes = sizeof(int) * mat->pfact_max_blocks;
   totalDeviceMem += numbytes;
-  if(deviceMalloc(GRID, (void**)&(mat->loc_workspace), numbytes, info) != HPL_SUCCESS) {
+  if(deviceMalloc(GRID, (void**)&(mat->loc_workspace), numbytes, info) !=
+     HPL_SUCCESS) {
     if(rank == 0) {
       HPL_pwarn(TEST->outfp,
                 __LINE__,
                 "HPL_pdmatgen",
-                "[%d,%d] Device memory allocation failed for pfact workspace. Requested %g GiBs total. Test Skiped.",
+                "[%d,%d] Device memory allocation failed for pfact workspace. "
+                "Requested %g GiBs total. Test Skiped.",
                 info[1],
                 info[2],
                 ((double)totalDeviceMem) / (1024 * 1024 * 1024));
@@ -286,12 +288,14 @@ int HPL_pdmatgen(HPL_T_test* TEST,
 
   numbytes = sizeof(double) * mat->pfact_max_blocks;
   totalDeviceMem += numbytes;
-  if(deviceMalloc(GRID, (void**)&(mat->max_workspace), numbytes, info) != HPL_SUCCESS) {
+  if(deviceMalloc(GRID, (void**)&(mat->max_workspace), numbytes, info) !=
+     HPL_SUCCESS) {
     if(rank == 0) {
       HPL_pwarn(TEST->outfp,
                 __LINE__,
                 "HPL_pdmatgen",
-                "[%d,%d] Device memory allocation failed for pfact workspace. Requested %g GiBs total. Test Skiped.",
+                "[%d,%d] Device memory allocation failed for pfact workspace. "
+                "Requested %g GiBs total. Test Skiped.",
                 info[1],
                 info[2],
                 ((double)totalDeviceMem) / (1024 * 1024 * 1024));
@@ -299,14 +303,16 @@ int HPL_pdmatgen(HPL_T_test* TEST,
     return HPL_FAILURE;
   }
 
-  numbytes = sizeof(double) * (4 + 2 * NB + NB * mat->pfact_max_blocks );
+  numbytes = sizeof(double) * (4 + 2 * NB + NB * mat->pfact_max_blocks);
   totalDeviceMem += numbytes;
-  if(deviceMalloc(GRID, (void**)&(mat->dev_workspace), numbytes, info) != HPL_SUCCESS) {
+  if(deviceMalloc(GRID, (void**)&(mat->dev_workspace), numbytes, info) !=
+     HPL_SUCCESS) {
     if(rank == 0) {
       HPL_pwarn(TEST->outfp,
                 __LINE__,
                 "HPL_pdmatgen",
-                "[%d,%d] Device memory allocation failed for pfact workspace. Requested %g GiBs total. Test Skiped.",
+                "[%d,%d] Device memory allocation failed for pfact workspace. "
+                "Requested %g GiBs total. Test Skiped.",
                 info[1],
                 info[2],
                 ((double)totalDeviceMem) / (1024 * 1024 * 1024));
@@ -316,12 +322,14 @@ int HPL_pdmatgen(HPL_T_test* TEST,
 
   numbytes = sizeof(uint32_t) * 2;
   totalDeviceMem += numbytes;
-  if(deviceMalloc(GRID, (void**)&(mat->barrier_space), numbytes, info) != HPL_SUCCESS) {
+  if(deviceMalloc(GRID, (void**)&(mat->barrier_space), numbytes, info) !=
+     HPL_SUCCESS) {
     if(rank == 0) {
       HPL_pwarn(TEST->outfp,
                 __LINE__,
                 "HPL_pdmatgen",
-                "[%d,%d] Device memory allocation failed for pfact workspace. Requested %g GiBs total. Test Skiped.",
+                "[%d,%d] Device memory allocation failed for pfact workspace. "
+                "Requested %g GiBs total. Test Skiped.",
                 info[1],
                 info[2],
                 ((double)totalDeviceMem) / (1024 * 1024 * 1024));
@@ -348,11 +356,13 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   }
 
   numbytes = sizeof(int32_t);
-  if(hostMalloc(GRID, (void**)&(mat->host_flag), numbytes, info) != HPL_SUCCESS) {
+  if(hostMalloc(GRID, (void**)&(mat->host_flag), numbytes, info) !=
+     HPL_SUCCESS) {
     HPL_pwarn(TEST->outfp,
               __LINE__,
               "HPL_pdmatgen",
-              "[%d,%d] Host memory allocation failed for pfact workspace. Test Skiped.",
+              "[%d,%d] Host memory allocation failed for pfact workspace. Test "
+              "Skiped.",
               info[1],
               info[2]);
     return HPL_FAILURE;

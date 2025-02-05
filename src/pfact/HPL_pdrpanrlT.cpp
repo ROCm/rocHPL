@@ -72,10 +72,7 @@ void HPL_pdrpanrlT(HPL_T_panel* PANEL,
   int     curr, ii, ioff, jb, jj, lda, m, n, n0, nb, nbdiv, nbmin;
 
   if(N <= (nbmin = PANEL->algo->nbmin)) {
-    PANEL->algo->pffun(PANEL,
-                       M,
-                       N,
-                       ICOFF);
+    PANEL->algo->pffun(PANEL, M, N, ICOFF);
     return;
   }
   /*
@@ -122,10 +119,7 @@ void HPL_pdrpanrlT(HPL_T_panel* PANEL,
     /*
      * Factor current panel - Replicated solve - Local update
      */
-    HPL_pdrpanrlT(PANEL,
-                  m,
-                  jb,
-                  ioff);
+    HPL_pdrpanrlT(PANEL, m, jb, ioff);
 
     CHECK_ROCBLAS_ERROR(rocblas_dtrsm(handle,
                                       rocblas_side_right,

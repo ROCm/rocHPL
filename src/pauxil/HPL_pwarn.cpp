@@ -75,7 +75,7 @@ void HPL_pwarn(FILE*       STREAM,
                 "in function",
                 SRNAME,
                 cline);
-    if (STREAM != stderr) {
+    if(STREAM != stderr) {
       HPL_fprintf(stderr,
                   "%s %s %d, %s %s:\n>>> %s <<<\n\n",
                   "HPL ERROR",
@@ -97,7 +97,7 @@ void HPL_pwarn(FILE*       STREAM,
                 SRNAME,
                 cline);
 
-    if (STREAM != stderr) {
+    if(STREAM != stderr) {
       HPL_fprintf(stderr,
                   "%s %s %d, %s %d %s %s:\n>>> %s <<<\n\n",
                   "HPL ERROR",

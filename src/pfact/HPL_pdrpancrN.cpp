@@ -72,10 +72,7 @@ void HPL_pdrpancrN(HPL_T_panel* PANEL,
   int     curr, ii, ioff, jb, jj, lda, m, n, n0, nb, nbdiv, nbmin;
 
   if(N <= (nbmin = PANEL->algo->nbmin)) {
-    PANEL->algo->pffun(PANEL,
-                       M,
-                       N,
-                       ICOFF);
+    PANEL->algo->pffun(PANEL, M, N, ICOFF);
     return;
   }
   /*
@@ -138,10 +135,7 @@ void HPL_pdrpancrN(HPL_T_panel* PANEL,
                                       Mptr(Aptr, ii, jj, lda),
                                       lda));
 
-    HPL_pdrpancrN(PANEL,
-                  m,
-                  jb,
-                  ioff);
+    HPL_pdrpancrN(PANEL, m, jb, ioff);
 
     CHECK_ROCBLAS_ERROR(rocblas_dgemm(handle,
                                       rocblas_operation_none,

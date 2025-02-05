@@ -73,12 +73,8 @@ void HPL_pdfact(HPL_T_panel* PANEL) {
 #endif
 
   /*Copy current panel into workspace*/
-  HPL_dlacpy(PANEL->mp,
-             PANEL->jb,
-             PANEL->A,
-             PANEL->lda,
-             PANEL->A0,
-             PANEL->lda0);
+  HPL_dlacpy(
+      PANEL->mp, PANEL->jb, PANEL->A, PANEL->lda, PANEL->A0, PANEL->lda0);
 
   /*
    * Factor the panel - Update the panel pointers
@@ -89,17 +85,14 @@ void HPL_pdfact(HPL_T_panel* PANEL) {
   CHECK_ROCBLAS_ERROR(rocblas_get_stream(handle, &stream));
   CHECK_HIP_ERROR(hipEventRecord(pfactStart, stream));
 
-  PANEL->algo->rffun(PANEL,
-                     PANEL->mp,
-                     jb,
-                     0);
+  PANEL->algo->rffun(PANEL, PANEL->mp, jb, 0);
 
   CHECK_HIP_ERROR(hipEventRecord(pfactStop, stream));
 
   HPL_TracingPop();
 
   /*Copy L1 back into A*/
-  if (PANEL->grid->myrow == PANEL->prow) {
+  if(PANEL->grid->myrow == PANEL->prow) {
     if(PANEL->algo->L1notran) {
       HPL_dlacpy(jb, jb, PANEL->L1, jb, PANEL->A, PANEL->lda);
     } else {

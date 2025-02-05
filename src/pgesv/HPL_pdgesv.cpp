@@ -322,7 +322,7 @@ void HPL_pdgesv(HPL_T_grid* GRID, HPL_T_palg* ALGO, HPL_T_pmat* A) {
         CHECK_HIP_ERROR(hipEventElapsedTime(&pfactTime, pfactStart, pfactStop));
 
         printf("  %9.3e |  %9.3e |",
-               static_cast<double>(pfactTime)/1000,
+               static_cast<double>(pfactTime) / 1000,
                HPL_ptimer_getStep(HPL_TIMING_MXSWP));
       } else {
         printf("            |            |");
