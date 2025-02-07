@@ -314,6 +314,8 @@ if [ ! -z "${devices}" ]; then
   for i in $(seq 0 $((size-1))); do
     rank_to_device+=(${device_array[$((i%n_devices))]})
   done
+
+  export ROCR_VISIBLE_DEVICES=${rank_to_device[rank]}
 else
 	n_devices=$(echo "${devicelist}" | grep -c "card")
   for i in $(seq 0 $((size-1))); do
@@ -359,7 +361,6 @@ export OMP_NUM_THREADS=${omp_num_threads}
 export OMP_PLACES=${omp_places}
 export OMP_PROC_BIND=true
 
-export ROCR_VISIBLE_DEVICES=$mygpu
 
 if [[ $globalRank -lt $size ]]; then
   echo "Node Binding: Process $rank [(p,q)=($myp,$myq)] GPU: $mygpu, CPU Cores: $omp_num_threads - $places"
