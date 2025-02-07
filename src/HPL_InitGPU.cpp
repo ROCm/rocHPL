@@ -41,7 +41,7 @@ void HPL_InitGPU(const HPL_T_grid* GRID) {
   MPI_Get_processor_name(host_name, &namelen);
 
   int localSize = GRID->local_npcol * GRID->local_nprow;
-  int localRank = rank & localSize;
+  int localRank = rank % localSize;
 
   /* Find out how many GPUs are in the system and their device number */
   int deviceCount;
