@@ -43,8 +43,6 @@ typedef MPI_Op HPL_T_OP;
 #define HPL_MAX MPI_MAX
 #define HPL_MIN MPI_MIN
 
-extern MPI_Op       HPL_DMXSWP;
-extern MPI_Datatype PDFACT_ROW;
 /*
  * ---------------------------------------------------------------------
  * #define macro constants
@@ -85,7 +83,6 @@ int HPL_all_reduce(void*,
                    const HPL_T_OP,
                    MPI_Comm);
 
-void HPL_dmxswp(void*, void*, int*, MPI_Datatype*);
 void HPL_all_reduce_dmxswp(double*, const int, const int, MPI_Comm, double*);
 
 #endif

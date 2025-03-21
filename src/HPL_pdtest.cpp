@@ -89,10 +89,6 @@ void HPL_pdtest(HPL_T_test* TEST,
 
   (void)HPL_grid_info(GRID, &nprow, &npcol, &myrow, &mycol);
 
-  /* Create row-swapping data type */
-  MPI_Type_contiguous(NB + 4, MPI_DOUBLE, &PDFACT_ROW);
-  MPI_Type_commit(&PDFACT_ROW);
-
   /*
    * Allocate matrix, right-hand-side, and vector solution x. [ A | b ] is
    * N by N+1.  One column is added in every process column for the solve.
@@ -487,9 +483,5 @@ void HPL_pdtest(HPL_T_test* TEST,
 #endif
     }
   }
-
-  /* Release row swapping datatype */
-  MPI_Type_free(&PDFACT_ROW);
-
   HPL_pdmatfree(&mat);
 }

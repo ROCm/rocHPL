@@ -52,8 +52,6 @@ int main(int ARGC, char** ARGV) {
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  MPI_Op_create(HPL_dmxswp, true, &HPL_DMXSWP);
-
   /*
    * Read and check validity of test parameters from input file
    *

@@ -17,10 +17,6 @@
 #include "hpl.hpp"
 #include <assert.h>
 
-/* MPI_Op_create is called in main to bind HPL_dmxswp to this MPI_Op */
-MPI_Op       HPL_DMXSWP;
-MPI_Datatype PDFACT_ROW;
-
 void HPL_dcopy(const int     N,
                const double* X,
                const int     INCX,
@@ -34,28 +30,6 @@ void HPL_dcopy(const int     N,
       Y += INCY;
       X += INCX;
     }
-  }
-}
-
-/* Swap-broadcast comparison function usable in MPI_Allreduce */
-void HPL_dmxswp(void* invec, void* inoutvec, int* len, MPI_Datatype* datatype) {
-
-  assert(*datatype == PDFACT_ROW);
-  assert(*len == 1);
-
-  int N;
-  MPI_Type_size(PDFACT_ROW, &N);
-
-  double* Wwork = static_cast<double*>(invec);
-  double* WORK  = static_cast<double*>(inoutvec);
-
-  const int jb = (N / sizeof(double)) - 4;
-
-  // check max column value and overwirte row if new max is found
-  const double gmax = Mabs(WORK[0]);
-  const double tmp1 = Mabs(Wwork[0]);
-  if((tmp1 > gmax) || ((tmp1 == gmax) && (Wwork[3] < WORK[3]))) {
-    HPL_dcopy(jb + 4, Wwork, 1, WORK, 1);
   }
 }
 
@@ -99,26 +73,37 @@ void HPL_all_reduce_dmxswp(double*   BUFFER,
 
   HPL_TracingPush("HPL_all_reduce_dmxswp");
 
-#ifdef HPL_USE_COLLECTIVES
+#ifdef HPL_MXSWP_USE_COLLECTIVES
 
-  const int myrow = static_cast<int>(BUFFER[3]);
   const int jb    = (COUNT - 4) / 2;
+  const int myrow = static_cast<int>(BUFFER[3]);
+  double *A0  = BUFFER + 4 + jb;
 
-  /* Use a normal all_reduce */
-  (void)MPI_Allreduce(MPI_IN_PLACE, BUFFER, 1, PDFACT_ROW, HPL_DMXSWP, COMM);
+  struct {
+    double val;
+    int    loc;
+  } lmaxloc, gmaxloc;
 
-  /*Location of max row*/
-  const int maxrow = static_cast<int>(BUFFER[3]);
+  lmaxloc.val = Mabs(BUFFER[0]);
+  lmaxloc.loc = myrow;
 
-  if(myrow == ROOT) { /*Root send top row to maxrow*/
-    if(maxrow != ROOT) {
-      double* Wwork = BUFFER + 4 + jb;
-      HPL_send(Wwork, jb, maxrow, MSGID_BEGIN_PFACT, COMM);
-    }
-  } else if(myrow == maxrow) { /*Recv top row from ROOT*/
-    double* Wwork = BUFFER + 4 + jb;
-    HPL_recv(Wwork, jb, ROOT, MSGID_BEGIN_PFACT, COMM);
+  //Find location of pivot row
+  (void)MPI_Allreduce( &lmaxloc, &gmaxloc, 1, MPI_DOUBLE_INT, MPI_MAXLOC, COMM);
+
+  const int maxrow = gmaxloc.loc;
+
+  // Send current row to the maxrow location
+  MPI_Request swpreq = MPI_REQUEST_NULL;
+  if (maxrow != ROOT) {
+    if (myrow == ROOT)   (void)MPI_Isend(A0, jb, MPI_DOUBLE, maxrow, ROOT, COMM, &swpreq);
+    if (myrow == maxrow) (void)MPI_Irecv(A0, jb, MPI_DOUBLE, ROOT, ROOT, COMM, &swpreq);
   }
+
+  // bcast of max row
+  (void)MPI_Bcast(BUFFER, jb + 4, MPI_DOUBLE, maxrow, COMM);
+
+  //Wait for swap to finish
+  (void)MPI_Wait(&swpreq, MPI_STATUS_IGNORE);
 
 #else
 
