@@ -26,7 +26,6 @@ cd rocHPL
 #    --prefix=<dir>       - Path to rocHPL install location (Default: build/rocHPL)
 #    --with-rocm=<dir>    - Path to ROCm install (Default: /opt/rocm)
 #    --with-rocblas=<dir> - Path to rocBLAS library (Default: /opt/rocm/rocblas)
-#    --with-cpublas=<dir> - Path to external CPU BLAS library (Default: clone+build AMD BLIS)
 #    --with-mpi=<dir>     - Path to external MPI install (Default: clone+build OpenMPI)
 #    --verbose-print      - Verbose output during HPL setup (Default: true)
 #    --progress-report    - Print progress report to terminal during HPL run (Default: true)
@@ -34,7 +33,7 @@ cd rocHPL
 #    --enable-tracing     - Annotate profiler traces with rocTX markers (Default: false)
 ./install.sh
 ```
-By default, [BLIS] v4.2, [UCX] v1.16.0, and [OpenMPI] v5.0.3 will be cloned and built in rocHPL/tpl. After building, the `rochpl` executable is placed in build/rochpl-install.
+By default, [UCX] v1.16.0, and [OpenMPI] v5.0.3 will be cloned and built in rocHPL/tpl. After building, the `rochpl` executable is placed in build/rochpl-install.
 
 ## Running rocHPL benchmark application
 rocHPL provides some helpful wrapper scripts. A wrapper script for launching via `mpirun` is provided in `mpirun_rochpl`. This script has two distinct run modes:
@@ -96,17 +95,19 @@ HPL.out      output file name (if any)
 8            memory alignment in double (> 0)
 ```
 
-The `mpirun_rochpl` wraps a second script, `run_rochpl`, wherein some CPU core bindings are determined autmotically based on the node-local MPI grid. Users wishing to launch rocHPL via a workload manager such as slurm may directly use this run script. For example,
+The `mpirun_rochpl` wraps a second script, `run_rochpl`, wherein some CPU core bindings are determined autmotically based on the node-local MPI grid. 
+
+Users wishing to launch rocHPL via a workload manager such as slurm may launch the `run_rochpl` script, or may launch the `rochpl` binary directly and specify CPU+GPU bindings via the job manager. For example:
 ```
-srun -N 2 -n 16 run_rochpl -P 4 -Q 4 -N 128000 --NB 512
+srun -N 2 -n 16 -c 16 --gpus-per-task 1 --gpu-bind=closest ./build/bin/rochpl -P 4 -Q 4 -N 128000 -NB 512
 ```
 When launching to multiple compute nodes, it can be useful to specify the local MPI grid layout on each node. To specify this, the `-p` and `-q` input parameters are used. For example, the srun line above is launching to two compute nodes, each with 8 GPUs. The local MPI grid layout can be specifed as either:
 ```
-srun -N 2 -n 16 run_rochpl -P 4 -Q 4 -p 2 -q 4 -N 128000 --NB 512
+srun -N 2 -n 16 -c 16 --gpus-per-task 1 --gpu-bind=closest ./build/bin/rochpl -P 4 -Q 4 -p 2 -q 4 -N 128000 -NB 512
 ```
 or
 ```
-srun -N 2 -n 16 run_rochpl -P 4 -Q 4 -p 4 -q 2 -N 128000 --NB 512
+srun -N 2 -n 16 -c 16 --gpus-per-task 1 --gpu-bind=closest ./build/bin/rochpl -P 4 -Q 4 -p 4 -q 2 -N 128000 -NB 512
 ```
 This helps to control where/how much inter-node communication is occuring.
 
@@ -145,7 +146,6 @@ The [license file][] can be found in the main repository.
 [ROCm]: https://github.com/ROCm/ROCm
 [HIP]: https://github.com/ROCm/HIP
 [rocBLAS]: https://github.com/ROCm/rocBLAS
-[BLIS]: https://github.com/amd/blis
 [OpenMPI]: https://github.com/open-mpi/ompi
 [UCX]: https://github.com/openucx/ucx
 [the issue tracker]: https://github.com/ROCm/rocHPL/issues
