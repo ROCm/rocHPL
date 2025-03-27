@@ -21,6 +21,22 @@
 MPI_Op       HPL_DMXSWP;
 MPI_Datatype PDFACT_ROW;
 
+void HPL_dcopy(const int     N,
+               const double* X,
+               const int     INCX,
+               double*       Y,
+               const int     INCY) {
+  if(INCX == 1 && INCY == 1) {
+    for(int n = 0; n < N; ++n) Y[n] = X[n];
+  } else {
+    for(int n = 0; n < N; ++n) {
+      *Y = *X;
+      Y += INCY;
+      X += INCX;
+    }
+  }
+}
+
 /* Swap-broadcast comparison function usable in MPI_Allreduce */
 void HPL_dmxswp(void* invec, void* inoutvec, int* len, MPI_Datatype* datatype) {
 

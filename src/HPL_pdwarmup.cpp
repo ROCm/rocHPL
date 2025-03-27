@@ -41,16 +41,9 @@ int HPL_pdwarmup(HPL_T_test* TEST,
 
   // Do a pfact on all columns
   p0->pcol = p0->grid->mycol;
-  HPL_pdpanel_SendToHost(p0);
-  HPL_pdpanel_Wait(p0);
-  for(int c = 0; c < GRID->local_npcol; ++c) {
-    if(GRID->local_mycol == c) { HPL_pdfact(p0); }
-    HPL_barrier(GRID->all_comm);
-  }
-  HPL_pdpanel_SendToDevice(p0);
+  HPL_pdfact(p0);
   HPL_pdpanel_swapids(p0);
   HPL_pdpanel_Wait(p0);
-  HPL_pdpanel_copyL1(p0);
   p0->A -= p0->jb * static_cast<size_t>(p0->lda);
 
   // Broadcast to register with MPI
@@ -79,16 +72,9 @@ int HPL_pdwarmup(HPL_T_test* TEST,
 
   // Do a pfact on all columns
   p1->pcol = p1->grid->mycol;
-  HPL_pdpanel_SendToHost(p1);
-  HPL_pdpanel_Wait(p1);
-  for(int c = 0; c < GRID->local_npcol; ++c) {
-    if(GRID->local_mycol == c) { HPL_pdfact(p1); }
-    HPL_barrier(GRID->all_comm);
-  }
-  HPL_pdpanel_SendToDevice(p1);
+  HPL_pdfact(p1);
   HPL_pdpanel_swapids(p1);
   HPL_pdpanel_Wait(p1);
-  HPL_pdpanel_copyL1(p1);
   p1->A -= p1->jb * static_cast<size_t>(p1->lda);
 
   // Broadcast to register with MPI

@@ -20,12 +20,12 @@
 #define TILE_DIM 64
 #define BLOCK_ROWS 16
 
-__global__ void dlacpy_gpu(const int M,
-                           const int N,
-                           const double* __restrict__ A,
-                           const int LDA,
-                           double* __restrict__ B,
-                           const int LDB) {
+__global__ void dlacpy(const int M,
+                       const int N,
+                       const double* __restrict__ A,
+                       const int LDA,
+                       double* __restrict__ B,
+                       const int LDB) {
 
   const int I = blockIdx.x * TILE_DIM + threadIdx.x;
   const int J = blockIdx.y * TILE_DIM + threadIdx.y;
@@ -46,12 +46,12 @@ __global__ void dlacpy_gpu(const int M,
   }
 }
 
-void HPL_dlacpy_gpu(const int     M,
-                    const int     N,
-                    const double* A,
-                    const int     LDA,
-                    double*       B,
-                    const int     LDB) {
+void HPL_dlacpy(const int     M,
+                const int     N,
+                const double* A,
+                const int     LDA,
+                double*       B,
+                const int     LDB) {
   /*
    * Purpose
    * =======
@@ -95,6 +95,6 @@ void HPL_dlacpy_gpu(const int     M,
 
   dim3 grid_size((M + TILE_DIM - 1) / TILE_DIM, (N + TILE_DIM - 1) / TILE_DIM);
   dim3 block_size(TILE_DIM, BLOCK_ROWS);
-  dlacpy_gpu<<<grid_size, block_size, 0, stream>>>(M, N, A, LDA, B, LDB);
+  dlacpy<<<grid_size, block_size, 0, stream>>>(M, N, A, LDA, B, LDB);
   CHECK_HIP_ERROR(hipGetLastError());
 }

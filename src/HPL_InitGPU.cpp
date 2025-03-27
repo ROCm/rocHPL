@@ -17,6 +17,7 @@ hipStream_t computeStream, dataStream;
 
 hipEvent_t swapStartEvent[HPL_N_UPD], update[HPL_N_UPD];
 hipEvent_t dgemmStart[HPL_N_UPD], dgemmStop[HPL_N_UPD];
+hipEvent_t pfactStart, pfactStop;
 
 static char host_name[MPI_MAX_PROCESSOR_NAME];
 
@@ -39,8 +40,8 @@ void HPL_InitGPU(const HPL_T_grid* GRID) {
 
   MPI_Get_processor_name(host_name, &namelen);
 
-  int localRank = GRID->local_mycol + GRID->local_myrow * GRID->local_npcol;
   int localSize = GRID->local_npcol * GRID->local_nprow;
+  int localRank = rank % localSize;
 
   /* Find out how many GPUs are in the system and their device number */
   int deviceCount;
@@ -58,20 +59,6 @@ void HPL_InitGPU(const HPL_T_grid* GRID) {
   }
 
   dev = localRank % deviceCount;
-
-#ifdef HPL_VERBOSE_PRINT
-  if(rank < localSize) {
-    hipDeviceProp_t props;
-    CHECK_HIP_ERROR(hipGetDeviceProperties(&props, dev));
-
-    printf("GPU  Binding: Process %d [(p,q)=(%d,%d)] GPU: %d, pciBusID %x \n",
-           rank,
-           GRID->local_myrow,
-           GRID->local_mycol,
-           dev,
-           props.pciBusID);
-  }
-#endif
 
   /* Assign device to MPI process, initialize BLAS and probe device properties
    */
@@ -95,6 +82,9 @@ void HPL_InitGPU(const HPL_T_grid* GRID) {
   CHECK_HIP_ERROR(hipEventCreate(dgemmStop + HPL_LOOK_AHEAD));
   CHECK_HIP_ERROR(hipEventCreate(dgemmStop + HPL_UPD_1));
   CHECK_HIP_ERROR(hipEventCreate(dgemmStop + HPL_UPD_2));
+
+  CHECK_HIP_ERROR(hipEventCreate(&pfactStart));
+  CHECK_HIP_ERROR(hipEventCreate(&pfactStop));
 
   /* Create a rocBLAS handle */
   CHECK_ROCBLAS_ERROR(rocblas_create_handle(&handle));
@@ -132,6 +122,9 @@ void HPL_FreeGPU() {
   CHECK_HIP_ERROR(hipEventDestroy(dgemmStop[HPL_UPD_1]));
   CHECK_HIP_ERROR(hipEventDestroy(dgemmStop[HPL_UPD_2]));
 
-  CHECK_HIP_ERROR(hipStreamDestroy(dataStream));
+  CHECK_HIP_ERROR(hipEventDestroy(pfactStart));
+  CHECK_HIP_ERROR(hipEventDestroy(pfactStop));
+
   CHECK_HIP_ERROR(hipStreamDestroy(computeStream));
+  CHECK_HIP_ERROR(hipStreamDestroy(dataStream));
 }

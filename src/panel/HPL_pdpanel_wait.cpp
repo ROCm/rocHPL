@@ -10,13 +10,6 @@
 #include "hpl.hpp"
 
 void HPL_pdpanel_Wait(HPL_T_panel* PANEL) {
-
-#ifdef HPL_DETAILED_TIMING
-  HPL_ptimer(HPL_TIMING_COPY);
-#endif
-  // Wait for panel
-  CHECK_HIP_ERROR(hipStreamSynchronize(dataStream));
-#ifdef HPL_DETAILED_TIMING
-  HPL_ptimer(HPL_TIMING_COPY);
-#endif
+  // Wait for pfact to be complete
+  CHECK_HIP_ERROR(hipEventSynchronize(pfactStop));
 }

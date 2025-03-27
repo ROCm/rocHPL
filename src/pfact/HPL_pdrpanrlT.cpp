@@ -19,12 +19,7 @@
 void HPL_pdrpanrlT(HPL_T_panel* PANEL,
                    const int    M,
                    const int    N,
-                   const int    ICOFF,
-                   double*      WORK,
-                   int          thread_rank,
-                   int          thread_size,
-                   double*      max_value,
-                   int*         max_index) {
+                   const int    ICOFF) {
   /*
    * Purpose
    * =======
@@ -70,9 +65,6 @@ void HPL_pdrpanrlT(HPL_T_panel* PANEL,
    *         On entry, ICOFF specifies the row and column offset of sub(A)
    *         in A.
    *
-   * WORK    (local workspace)             double *
-   *         On entry, WORK  is a workarray of size at least 2*(4+2*N0).
-   *
    * ---------------------------------------------------------------------
    */
 
@@ -80,15 +72,7 @@ void HPL_pdrpanrlT(HPL_T_panel* PANEL,
   int     curr, ii, ioff, jb, jj, lda, m, n, n0, nb, nbdiv, nbmin;
 
   if(N <= (nbmin = PANEL->algo->nbmin)) {
-    PANEL->algo->pffun(PANEL,
-                       M,
-                       N,
-                       ICOFF,
-                       WORK,
-                       thread_rank,
-                       thread_size,
-                       max_value,
-                       max_index);
+    PANEL->algo->pffun(PANEL, M, N, ICOFF);
     return;
   }
   /*
@@ -108,9 +92,9 @@ void HPL_pdrpanrlT(HPL_T_panel* PANEL,
   n       = N;
   nb = jb = ((((N + nbmin - 1) / nbmin) + nbdiv - 1) / nbdiv) * nbmin;
 
-  A     = PANEL->hA0;
+  A     = PANEL->A0;
   lda   = PANEL->lda0;
-  L1    = PANEL->hL1;
+  L1    = PANEL->L1;
   n0    = PANEL->jb;
   L1ptr = Mptr(L1, ICOFF, ICOFF, n0);
   curr  = (int)(PANEL->grid->myrow == PANEL->prow);
@@ -119,6 +103,9 @@ void HPL_pdrpanrlT(HPL_T_panel* PANEL,
     Aptr = Mptr(A, ICOFF, ICOFF, lda);
   else
     Aptr = Mptr(A, 0, ICOFF, lda);
+
+  const double one  = 1.0;
+  const double mone = -1.0;
   /*
    * The triangular solve is replicated in every  process row.  The  panel
    * factorization is  such that  the first rows of  A  are accumulated in
@@ -132,65 +119,41 @@ void HPL_pdrpanrlT(HPL_T_panel* PANEL,
     /*
      * Factor current panel - Replicated solve - Local update
      */
-    HPL_pdrpanrlT(PANEL,
-                  m,
-                  jb,
-                  ioff,
-                  WORK,
-                  thread_rank,
-                  thread_size,
-                  max_value,
-                  max_index);
+    HPL_pdrpanrlT(PANEL, m, jb, ioff);
 
-    if(thread_rank == 0) {
-      HPL_dtrsm(HplColumnMajor,
-                HplRight,
-                HplUpper,
-                HplNoTrans,
-                HplUnit,
-                n,
-                jb,
-                HPL_rone,
-                Mptr(L1ptr, jj, jj, n0),
-                n0,
-                Mptr(L1ptr, jj + jb, jj, n0),
-                n0);
-    }
+    CHECK_ROCBLAS_ERROR(rocblas_dtrsm(handle,
+                                      rocblas_side_right,
+                                      rocblas_fill_upper,
+                                      rocblas_operation_none,
+                                      rocblas_diagonal_unit,
+                                      n,
+                                      jb,
+                                      &one,
+                                      Mptr(L1ptr, jj, jj, n0),
+                                      n0,
+                                      Mptr(L1ptr, jj + jb, jj, n0),
+                                      n0));
+
     if(curr != 0) {
       ii += jb;
       m -= jb;
     }
 
-#pragma omp barrier
+    CHECK_ROCBLAS_ERROR(rocblas_dgemm(handle,
+                                      rocblas_operation_none,
+                                      rocblas_operation_transpose,
+                                      m,
+                                      n,
+                                      jb,
+                                      &mone,
+                                      Mptr(Aptr, ii, jj, lda),
+                                      lda,
+                                      Mptr(L1ptr, jj + jb, jj, n0),
+                                      n0,
+                                      &one,
+                                      Mptr(Aptr, ii, jj + jb, lda),
+                                      lda));
 
-    HPL_dgemm_omp(HplColumnMajor,
-                  HplNoTrans,
-                  HplTrans,
-                  m,
-                  n,
-                  jb,
-                  -HPL_rone,
-                  Mptr(Aptr, ii, jj, lda),
-                  lda,
-                  Mptr(L1ptr, jj + jb, jj, n0),
-                  n0,
-                  HPL_rone,
-                  Mptr(Aptr, ii, jj + jb, lda),
-                  lda,
-                  PANEL->nb,
-                  (curr != 0) ? ICOFF + ii : 0,
-                  thread_rank,
-                  thread_size);
-
-    /*
-     * Copy back upper part of A in current process row - Go the next block
-     */
-    if(curr != 0) {
-      if(thread_rank == 0) {
-        HPL_dlatcpy(
-            ioff, jb, Mptr(L1, ioff, 0, n0), n0, Mptr(A, 0, ioff, lda), lda);
-      }
-    }
     jj += jb;
     jb = Mmin(n, nb);
 

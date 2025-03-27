@@ -114,11 +114,15 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   mat->A = nullptr;
   mat->X = nullptr;
 
-  mat->hA0 = nullptr;
-  mat->W0  = nullptr;
-  mat->W1  = nullptr;
-  mat->W2  = nullptr;
+  mat->W0 = nullptr;
+  mat->W1 = nullptr;
+  mat->W2 = nullptr;
 
+  mat->loc_workspace  = nullptr;
+  mat->max_workspace  = nullptr;
+  mat->dev_workspace  = nullptr;
+  mat->barrier_space  = nullptr;
+  mat->host_flag      = nullptr;
   mat->host_workspace = nullptr;
 
   mat->panel[0].A0 = nullptr;
@@ -132,6 +136,13 @@ int HPL_pdmatgen(HPL_T_test* TEST,
 
   mat->panel[0].IWORK = nullptr;
   mat->panel[1].IWORK = nullptr;
+
+  int dev = 0;
+  CHECK_HIP_ERROR(hipGetDevice(&dev));
+
+  hipDeviceProp_t props;
+  CHECK_HIP_ERROR(hipGetDeviceProperties(&props, dev));
+  mat->pfact_max_blocks = props.multiProcessorCount;
 
   /*
    * Allocate dynamic memory
@@ -257,23 +268,76 @@ int HPL_pdmatgen(HPL_T_test* TEST,
     return HPL_FAILURE;
   }
 
-  /*Need space for a column of panels for pdfact on CPU*/
-  /*Holds A0/L2 + L1 + pivoting arrays*/
-  size_t lpiv = ((4 * NB + 1 + nprow + 1) * sizeof(int) + sizeof(double) - 1) /
-                (sizeof(double));
-  numbytes = sizeof(double) * (mat->ld * NB + NB * NB + lpiv);
-  if(hostMalloc(GRID, (void**)&(mat->hA0), numbytes, info) != HPL_SUCCESS) {
+  // Workspaces for pdfact
+  numbytes = sizeof(int) * mat->pfact_max_blocks;
+  totalDeviceMem += numbytes;
+  if(deviceMalloc(GRID, (void**)&(mat->loc_workspace), numbytes, info) !=
+     HPL_SUCCESS) {
     if(rank == 0) {
       HPL_pwarn(TEST->outfp,
                 __LINE__,
                 "HPL_pdmatgen",
-                "[%d,%d] Host memory allocation failed for host panel "
-                "workspace. Test Skiped.",
+                "[%d,%d] Device memory allocation failed for pfact workspace. "
+                "Requested %g GiBs total. Test Skiped.",
                 info[1],
-                info[2]);
+                info[2],
+                ((double)totalDeviceMem) / (1024 * 1024 * 1024));
     }
     return HPL_FAILURE;
   }
+
+  numbytes = sizeof(double) * mat->pfact_max_blocks;
+  totalDeviceMem += numbytes;
+  if(deviceMalloc(GRID, (void**)&(mat->max_workspace), numbytes, info) !=
+     HPL_SUCCESS) {
+    if(rank == 0) {
+      HPL_pwarn(TEST->outfp,
+                __LINE__,
+                "HPL_pdmatgen",
+                "[%d,%d] Device memory allocation failed for pfact workspace. "
+                "Requested %g GiBs total. Test Skiped.",
+                info[1],
+                info[2],
+                ((double)totalDeviceMem) / (1024 * 1024 * 1024));
+    }
+    return HPL_FAILURE;
+  }
+
+  numbytes = sizeof(double) * (4 + 2 * NB + NB * mat->pfact_max_blocks);
+  totalDeviceMem += numbytes;
+  if(deviceMalloc(GRID, (void**)&(mat->dev_workspace), numbytes, info) !=
+     HPL_SUCCESS) {
+    if(rank == 0) {
+      HPL_pwarn(TEST->outfp,
+                __LINE__,
+                "HPL_pdmatgen",
+                "[%d,%d] Device memory allocation failed for pfact workspace. "
+                "Requested %g GiBs total. Test Skiped.",
+                info[1],
+                info[2],
+                ((double)totalDeviceMem) / (1024 * 1024 * 1024));
+    }
+    return HPL_FAILURE;
+  }
+
+  numbytes = sizeof(uint32_t) * 2;
+  totalDeviceMem += numbytes;
+  if(deviceMalloc(GRID, (void**)&(mat->barrier_space), numbytes, info) !=
+     HPL_SUCCESS) {
+    if(rank == 0) {
+      HPL_pwarn(TEST->outfp,
+                __LINE__,
+                "HPL_pdmatgen",
+                "[%d,%d] Device memory allocation failed for pfact workspace. "
+                "Requested %g GiBs total. Test Skiped.",
+                info[1],
+                info[2],
+                ((double)totalDeviceMem) / (1024 * 1024 * 1024));
+    }
+    return HPL_FAILURE;
+  }
+  mat->barrier_space[0] = 0;
+  mat->barrier_space[1] = 0;
 
   /*we need 4 + 4*JB entries of scratch for pdfact */
   numbytes = sizeof(double) * 2 * (4 + 2 * NB);
@@ -291,6 +355,20 @@ int HPL_pdmatgen(HPL_T_test* TEST,
     return HPL_FAILURE;
   }
 
+  numbytes = sizeof(int32_t);
+  if(hostMalloc(GRID, (void**)&(mat->host_flag), numbytes, info) !=
+     HPL_SUCCESS) {
+    HPL_pwarn(TEST->outfp,
+              __LINE__,
+              "HPL_pdmatgen",
+              "[%d,%d] Host memory allocation failed for pfact workspace. Test "
+              "Skiped.",
+              info[1],
+              info[2]);
+    return HPL_FAILURE;
+  }
+  mat->host_flag[0] = 0;
+
 #ifdef HPL_VERBOSE_PRINT
   if((myrow == 0) && (mycol == 0)) {
     printf("Total device memory use = %g GiBs\n",
@@ -298,38 +376,34 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   }
 #endif
 
-#pragma omp parallel
-  {
-    /*First touch*/
-    const int thread_rank = omp_get_thread_num();
-    const int thread_size = omp_get_num_threads();
-    assert(thread_size <= max_nthreads);
-
-    for(int i = 0; i < mat->ld; i += NB) {
-      if((i / NB) % thread_size == thread_rank) {
-        const int mm = std::min(NB, mat->ld - i);
-        for(int k = 0; k < NB; ++k) {
-          for(int j = 0; j < mm; ++j) {
-            mat->hA0[j + i + static_cast<size_t>(mat->ld) * k] = 0.0;
-          }
-        }
-      }
-    }
-  }
-
   return HPL_SUCCESS;
 }
 
 void HPL_pdmatfree(HPL_T_pmat* mat) {
 
+  if(mat->host_flag) {
+    CHECK_HIP_ERROR(hipHostFree(mat->host_flag));
+    mat->host_flag = nullptr;
+  }
   if(mat->host_workspace) {
     CHECK_HIP_ERROR(hipHostFree(mat->host_workspace));
     mat->host_workspace = nullptr;
   }
-
-  if(mat->hA0) {
-    CHECK_HIP_ERROR(hipHostFree(mat->hA0));
-    mat->hA0 = nullptr;
+  if(mat->barrier_space) {
+    CHECK_HIP_ERROR(hipFree(mat->barrier_space));
+    mat->barrier_space = nullptr;
+  }
+  if(mat->dev_workspace) {
+    CHECK_HIP_ERROR(hipFree(mat->dev_workspace));
+    mat->dev_workspace = nullptr;
+  }
+  if(mat->max_workspace) {
+    CHECK_HIP_ERROR(hipFree(mat->max_workspace));
+    mat->max_workspace = nullptr;
+  }
+  if(mat->loc_workspace) {
+    CHECK_HIP_ERROR(hipFree(mat->loc_workspace));
+    mat->loc_workspace = nullptr;
   }
 
   if(mat->X) {
