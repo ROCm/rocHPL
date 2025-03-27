@@ -14,9 +14,9 @@ HPL.out      output file name (if any)
 1            # of panel fact
 2            PFACTs (0=left, 1=Crout, 2=Right)
 1            # of recursive stopping criterium
-2            NBMINs (>= 1)
+32           NBMINs (>= 1)
 1            # of panels in recursion
-32           NDIVs
+2            NDIVs
 1            # of recursive panel fact.
 2            RFACTs (0=left, 1=Crout, 2=Right)
 1            # of broadcast
