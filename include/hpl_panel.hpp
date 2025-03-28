@@ -39,6 +39,7 @@ typedef struct HPL_S_panel {
   double*            U0;    /* ptr to U */
   double*            U1;    /* ptr to U1 */
   double*            U2;    /* ptr to U2 */
+  double*            timers;  /* timers work space */
   int*               IWORK; /* integer workspace for swapping */
   int*               ipiv;
   int*               dipiv;

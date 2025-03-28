@@ -78,6 +78,10 @@ void HPL_pdtrsv(HPL_T_grid* GRID, HPL_T_pmat* AMAT) {
 /* ..
  * .. Executable Statements ..
  */
+
+  MPI_Barrier(MPI_COMM_WORLD);
+  timePoint_t pdtrsv_start = std::chrono::high_resolution_clock::now();
+
 #ifdef HPL_DETAILED_TIMING
   HPL_ptimer(HPL_TIMING_PTRSV);
 #endif
@@ -343,4 +347,11 @@ void HPL_pdtrsv(HPL_T_grid* GRID, HPL_T_pmat* AMAT) {
 #ifdef HPL_DETAILED_TIMING
   HPL_ptimer(HPL_TIMING_PTRSV);
 #endif
+
+  MPI_Barrier(MPI_COMM_WORLD);
+  timePoint_t pdtrsv_end = std::chrono::high_resolution_clock::now();
+  double pdtrsv_time = std::chrono::duration_cast<std::chrono::microseconds>(pdtrsv_end - pdtrsv_start).count()/1000.0;
+
+  if (myrow==0 && mycol==0)
+    printf("pdtrsv time (ms): %8.3f\n", pdtrsv_time);
 }

@@ -237,5 +237,7 @@ int HPL_pdpanel_new(HPL_T_test*  TEST,
     return HPL_FAILURE;
   }
 
+  PANEL->timers = (double *) malloc(sizeof(double) * nb);
+
   return HPL_SUCCESS;
 }

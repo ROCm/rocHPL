@@ -54,5 +54,7 @@ int HPL_pdpanel_free(HPL_T_panel* PANEL) {
     PANEL->A0 = nullptr;
   }
 
+  if(PANEL->timers) free(PANEL->timers);
+
   return (HPL_SUCCESS);
 }

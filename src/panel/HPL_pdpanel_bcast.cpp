@@ -34,6 +34,8 @@ int HPL_pdpanel_bcast(HPL_T_panel* PANEL) {
    * ---------------------------------------------------------------------
    */
 
+  MPI_Barrier(MPI_COMM_WORLD);
+
   if(PANEL == NULL) { return HPL_SUCCESS; }
   if(PANEL->grid->npcol <= 1) { return HPL_SUCCESS; }
 
@@ -46,7 +48,11 @@ int HPL_pdpanel_bcast(HPL_T_panel* PANEL) {
   /*
    * Single Bcast call
    */
+  timePoint_t bcast_start = std::chrono::high_resolution_clock::now();
   int err = HPL_bcast(PANEL->A0, PANEL->len, root, comm, PANEL->algo->btopo);
+  timePoint_t bcast_end = std::chrono::high_resolution_clock::now();
+
+  bcast_time = std::chrono::duration_cast<std::chrono::microseconds>(bcast_end - bcast_start).count()/1000.0;
 
 #ifdef HPL_DETAILED_TIMING
   HPL_ptimer(HPL_TIMING_LBCAST);

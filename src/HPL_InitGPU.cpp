@@ -18,6 +18,11 @@ hipStream_t computeStream, dataStream;
 hipEvent_t swapStartEvent[HPL_N_UPD], update[HPL_N_UPD];
 hipEvent_t dgemmStart[HPL_N_UPD], dgemmStop[HPL_N_UPD];
 hipEvent_t pfactStart, pfactStop;
+hipEvent_t dtrsmStart[HPL_N_UPD], dtrsmStop[HPL_N_UPD];
+hipEvent_t rowGatherStart[HPL_N_UPD], rowGatherStop[HPL_N_UPD];
+hipEvent_t rowScatterStart[HPL_N_UPD], rowScatterStop[HPL_N_UPD];
+
+double pdfact_time, bcast_time, scatter_time[HPL_N_UPD], gather_time[HPL_N_UPD];
 
 static char host_name[MPI_MAX_PROCESSOR_NAME];
 
@@ -86,6 +91,30 @@ void HPL_InitGPU(const HPL_T_grid* GRID) {
   CHECK_HIP_ERROR(hipEventCreate(&pfactStart));
   CHECK_HIP_ERROR(hipEventCreate(&pfactStop));
 
+  CHECK_HIP_ERROR(hipEventCreate(dtrsmStart + HPL_LOOK_AHEAD));
+  CHECK_HIP_ERROR(hipEventCreate(dtrsmStart + HPL_UPD_1));
+  CHECK_HIP_ERROR(hipEventCreate(dtrsmStart + HPL_UPD_2));
+
+  CHECK_HIP_ERROR(hipEventCreate(dtrsmStop + HPL_LOOK_AHEAD));
+  CHECK_HIP_ERROR(hipEventCreate(dtrsmStop + HPL_UPD_1));
+  CHECK_HIP_ERROR(hipEventCreate(dtrsmStop + HPL_UPD_2));
+
+  CHECK_HIP_ERROR(hipEventCreate(rowGatherStart + HPL_LOOK_AHEAD));
+  CHECK_HIP_ERROR(hipEventCreate(rowGatherStart + HPL_UPD_1));
+  CHECK_HIP_ERROR(hipEventCreate(rowGatherStart + HPL_UPD_2));
+
+  CHECK_HIP_ERROR(hipEventCreate(rowGatherStop + HPL_LOOK_AHEAD));
+  CHECK_HIP_ERROR(hipEventCreate(rowGatherStop + HPL_UPD_1));
+  CHECK_HIP_ERROR(hipEventCreate(rowGatherStop + HPL_UPD_2));
+
+  CHECK_HIP_ERROR(hipEventCreate(rowScatterStart + HPL_LOOK_AHEAD));
+  CHECK_HIP_ERROR(hipEventCreate(rowScatterStart + HPL_UPD_1));
+  CHECK_HIP_ERROR(hipEventCreate(rowScatterStart + HPL_UPD_2));
+
+  CHECK_HIP_ERROR(hipEventCreate(rowScatterStop + HPL_LOOK_AHEAD));
+  CHECK_HIP_ERROR(hipEventCreate(rowScatterStop + HPL_UPD_1));
+  CHECK_HIP_ERROR(hipEventCreate(rowScatterStop + HPL_UPD_2));
+
   /* Create a rocBLAS handle */
   CHECK_ROCBLAS_ERROR(rocblas_create_handle(&handle));
   CHECK_ROCBLAS_ERROR(
@@ -124,6 +153,30 @@ void HPL_FreeGPU() {
 
   CHECK_HIP_ERROR(hipEventDestroy(pfactStart));
   CHECK_HIP_ERROR(hipEventDestroy(pfactStop));
+
+  CHECK_HIP_ERROR(hipEventDestroy(dtrsmStart[HPL_LOOK_AHEAD]));
+  CHECK_HIP_ERROR(hipEventDestroy(dtrsmStart[HPL_UPD_1]));
+  CHECK_HIP_ERROR(hipEventDestroy(dtrsmStart[HPL_UPD_2]));
+
+  CHECK_HIP_ERROR(hipEventDestroy(dtrsmStop[HPL_LOOK_AHEAD]));
+  CHECK_HIP_ERROR(hipEventDestroy(dtrsmStop[HPL_UPD_1]));
+  CHECK_HIP_ERROR(hipEventDestroy(dtrsmStop[HPL_UPD_2]));
+
+  CHECK_HIP_ERROR(hipEventDestroy(rowGatherStart[HPL_LOOK_AHEAD]));
+  CHECK_HIP_ERROR(hipEventDestroy(rowGatherStart[HPL_UPD_1]));
+  CHECK_HIP_ERROR(hipEventDestroy(rowGatherStart[HPL_UPD_2]));
+
+  CHECK_HIP_ERROR(hipEventDestroy(rowGatherStop[HPL_LOOK_AHEAD]));
+  CHECK_HIP_ERROR(hipEventDestroy(rowGatherStop[HPL_UPD_1]));
+  CHECK_HIP_ERROR(hipEventDestroy(rowGatherStop[HPL_UPD_2]));
+
+  CHECK_HIP_ERROR(hipEventDestroy(rowScatterStart[HPL_LOOK_AHEAD]));
+  CHECK_HIP_ERROR(hipEventDestroy(rowScatterStart[HPL_UPD_1]));
+  CHECK_HIP_ERROR(hipEventDestroy(rowScatterStart[HPL_UPD_2]));
+
+  CHECK_HIP_ERROR(hipEventDestroy(rowScatterStop[HPL_LOOK_AHEAD]));
+  CHECK_HIP_ERROR(hipEventDestroy(rowScatterStop[HPL_UPD_1]));
+  CHECK_HIP_ERROR(hipEventDestroy(rowScatterStop[HPL_UPD_2]));
 
   CHECK_HIP_ERROR(hipStreamDestroy(computeStream));
   CHECK_HIP_ERROR(hipStreamDestroy(dataStream));
