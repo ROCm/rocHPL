@@ -280,7 +280,7 @@ devicelist=$(${rocm_dir}/bin/rocm-smi --csv --showtoponuma | tail -n +2 | tr ','
 threads_per_core=$(echo "${cpulist}" | grep -c ".*	0	.*")
 
 #remove the extra cpus on each core to make a list of just physical cores, then sort by numa domain
-corelist=$(echo "$cpulist" | awk -v tpc=${threads_per_core} 'NR%tpc' | sort -k 3 -g -s)
+corelist=$(echo "$cpulist" | awk -v tpc=${threads_per_core} '(NR-1)%tpc==0' | sort -k 3 -g -s)
 
 #count numa domains
 line=($(echo "$cpulist" | tail -n 1))
