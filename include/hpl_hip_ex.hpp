@@ -763,7 +763,7 @@ __device__ inline void block_maxloc(double& max,
   s_loc[t] = loc;
   __syncthreads();
 
-  for(int active = BLOCKSIZE / 2; active > 0; active >>= 1) {
+  for(int active = BLOCKSIZE / 2; active > warpSize; active >>= 1) {
     if(t < active) {
       if(std::abs(s_max[t + active]) > std::abs(s_max[t])) {
         s_max[t] = s_max[t + active];
