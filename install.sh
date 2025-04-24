@@ -112,7 +112,7 @@ install_openmpi( )
 
   if [ ! -d "./tpl/ucx" ]; then
     mkdir -p tpl && cd tpl
-    git clone --branch v1.16.0 https://github.com/openucx/ucx.git ucx
+    git clone --branch v1.18.0 https://github.com/openucx/ucx.git ucx
     check_exit_code 2
     cd ucx;
     ./autogen.sh; ./autogen.sh #why do we have to run this twice?
@@ -153,12 +153,12 @@ install_openmpi( )
 
   if [ ! -d "./tpl/openmpi" ]; then
     mkdir -p tpl && cd tpl
-    git clone --branch v5.0.3 --recursive https://github.com/open-mpi/ompi.git openmpi
+    git clone --branch v5.0.7 --recursive https://github.com/open-mpi/ompi.git openmpi
     check_exit_code 2
     cd openmpi; ./autogen.pl;
     check_exit_code 2
     mkdir build; cd build
-    ../configure --prefix=${PWD}/../ --with-ucx=${PWD}/../../ucx --without-verbs
+    ../configure --prefix=${PWD}/../ --with-ucx=${PWD}/../../ucx --without-verbs --disable-man-pages --enable-mca-no-build=btl-uct
     check_exit_code 2
     make -j$(nproc)
     check_exit_code 2
@@ -169,7 +169,7 @@ install_openmpi( )
     cd tpl/openmpi; ./autogen.pl;
     check_exit_code 2
     mkdir build; cd build
-    ../configure --prefix=${PWD}/../ --with-ucx=${PWD}/../../ucx --without-verbs
+    ../configure --prefix=${PWD}/../ --with-ucx=${PWD}/../../ucx --without-verbs --disable-man-pages --enable-mca-no-build=btl-uct
     check_exit_code 2
     make -j$(nproc)
     check_exit_code 2
