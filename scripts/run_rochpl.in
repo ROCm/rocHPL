@@ -303,7 +303,7 @@ for i in $(seq 1 $((n_numa-1))); do numa_core_offsets+=($((numa_core_offsets[$((
 #parse device to numa mapping
 device_to_numa=()
 while read -a line; do
-  device_to_numa+=(${line[2]})
+  device_to_numa+=(${line[1]})
 done <<< ${devicelist}
 
 rank_to_device=()
