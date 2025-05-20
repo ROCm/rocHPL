@@ -148,11 +148,15 @@ int HPL_pdpanel_new(HPL_T_test*  TEST,
   }
 
   if(nprow > 1) {
-    const int NSplit = Mmax(0, ((((int)(A->nq * ALGO->frac)) / nb) * nb));
-    PANEL->nu2       = Mmin(A->nq, NSplit);
+    int Anq=0;
+    Mnumroc(Anq, A->n+1, nb, nb, mycol, 0, npcol);
+    const int NSplit1 = Mmax(0, ((((int)(Anq * ALGO->frac)) / nb) * nb));
+    const int NSplit2 = Mmax(0, Anq - NSplit1);
+
+    PANEL->nu2       = Mmin(Anq, NSplit2);
     PANEL->ldu2      = ((PANEL->nu2 + 95) / 128) * 128 + 32; /*pad*/
 
-    PANEL->nu1  = A->nq - PANEL->nu2;
+    PANEL->nu1  = Anq - PANEL->nu2;
     PANEL->ldu1 = ((PANEL->nu1 + 95) / 128) * 128 + 32; /*pad*/
 
     numbytes = (nb * PANEL->ldu1) * sizeof(double);

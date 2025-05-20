@@ -208,11 +208,15 @@ int HPL_pdmatgen(HPL_T_test* TEST,
 
   int ldu2 = 0;
   if(nprow > 1) {
-    const int NSplit = Mmax(0, ((((int)(mat->nq * ALGO->frac)) / NB) * NB));
-    int       nu2    = Mmin(mat->nq, NSplit);
+    int Anq=0;
+    Mnumroc(Anq, mat->n+1, NB, NB, mycol, 0, npcol);
+    const int NSplit1 = Mmax(0, ((((int)(Anq * ALGO->frac)) / NB) * NB));
+    const int NSplit2 = Mmax(0, Anq - NSplit1);
+
+    int       nu2    = Mmin(Anq, NSplit2);
     ldu2             = ((nu2 + 95) / 128) * 128 + 32; /*pad*/
 
-    int nu1  = mat->nq - nu2;
+    int nu1  = Anq - nu2;
     int ldu1 = ((nu1 + 95) / 128) * 128 + 32; /*pad*/
 
     numbytes = (NB * ldu1) * sizeof(double);
