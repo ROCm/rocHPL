@@ -210,7 +210,7 @@ int HPL_pdmatgen(HPL_T_test* TEST,
   if(nprow > 1) {
     int Anq=0;
     Mnumroc(Anq, mat->n+1, NB, NB, mycol, 0, npcol);
-    const int NSplit1 = Mmax(0, ((((int)(Anq * ALGO->frac)) / NB) * NB));
+    const int NSplit1 = Mmax(0, ((((int)(Anq * (1.0-ALGO->frac))) / NB) * NB));
     const int NSplit2 = Mmax(0, Anq - NSplit1);
 
     int       nu2    = Mmin(Anq, NSplit2);

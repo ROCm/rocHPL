@@ -185,7 +185,7 @@ void HPL_pdpanel_init(HPL_T_grid*  GRID,
   } else {
     int Anq=0;
     Mnumroc(Anq, A->n+1, nb, nb, mycol, 0, npcol);
-    const int NSplit1 = Mmax(0, ((((int)(Anq * fraction)) / nb) * nb));
+    const int NSplit1 = Mmax(0, ((((int)(Anq * (1.0-fraction))) / nb) * nb));
     const int NSplit2 = Mmax(0, Anq - NSplit1);
     PANEL->nu0       = (mycol == inxtcol) ? Mmin(JB, nu) : 0;
     PANEL->ldu0      = PANEL->nu0;
