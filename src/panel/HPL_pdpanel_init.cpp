@@ -183,11 +183,14 @@ void HPL_pdpanel_init(HPL_T_grid*  GRID,
     PANEL->nu2  = nu - PANEL->nu0;
     PANEL->ldu2 = ((PANEL->nu2 + 95) / 128) * 128 + 32; /*pad*/
   } else {
-    const int NSplit = Mmax(0, ((((int)(A->nq * fraction)) / nb) * nb));
+    int Anq=0;
+    Mnumroc(Anq, A->n+1, nb, nb, mycol, 0, npcol);
+    const int NSplit1 = Mmax(0, ((((int)(Anq * (1.0-fraction))) / nb) * nb));
+    const int NSplit2 = Mmax(0, Anq - NSplit1);
     PANEL->nu0       = (mycol == inxtcol) ? Mmin(JB, nu) : 0;
     PANEL->ldu0      = PANEL->nu0;
 
-    PANEL->nu2  = Mmin(nu - PANEL->nu0, NSplit);
+    PANEL->nu2  = Mmin(nu - PANEL->nu0, NSplit2);
     PANEL->ldu2 = ((PANEL->nu2 + 95) / 128) * 128 + 32; /*pad*/
 
     PANEL->nu1  = nu - PANEL->nu0 - PANEL->nu2;

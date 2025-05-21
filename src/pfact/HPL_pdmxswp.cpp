@@ -86,10 +86,11 @@ void HPL_pdmxswp(HPL_T_panel* PANEL,
   comm    = grid->col_comm;
   myrow   = grid->myrow;
   nprow   = grid->nprow;
-  int NB  = PANEL->jb;
+  int JB  = PANEL->jb;
+  int NB  = PANEL->nb;
   icurrow = PANEL->prow;
 
-  cnt0  = 4 + 2 * NB;
+  cnt0  = 4 + 2 * JB;
   Wwork = WORK + cnt0;
 
   if(M > 0) {
