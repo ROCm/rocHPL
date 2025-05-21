@@ -63,8 +63,8 @@
 #endif
 
 #ifdef HPL_TRACING
-#define HPL_TracingPush(label) HPL_TracingPush(label)
-#define HPL_TracingPop(label) HPL_TracingPop()
+#define HPL_TracingPush(label) roctxRangePush(label)
+#define HPL_TracingPop(label) roctxRangePop()
 #else
 #define HPL_TracingPush(label)
 #define HPL_TracingPop(label)
