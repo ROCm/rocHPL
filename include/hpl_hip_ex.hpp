@@ -4,6 +4,12 @@
 
 #include "hip/hip_runtime.h"
 
+#if defined(__GFX8__) || defined(__GFX9__)
+__device__ static constexpr int WarpSize = 64;
+#else
+__device__ static constexpr int WarpSize = 32;
+#endif
+
 namespace hip_ex {
 
 enum thread_scope {
@@ -781,7 +787,7 @@ __device__ inline void block_maxloc(double& max,
       max = s_max[t];
       loc = s_loc[t];
     }
-    wavefront_maxloc<warpSize>(max, loc);
+    wavefront_maxloc<WarpSize>(max, loc);
     s_max[t] = max;
     s_loc[t] = loc;
   }
