@@ -781,7 +781,16 @@ __device__ inline void block_maxloc(double& max,
       max = s_max[t];
       loc = s_loc[t];
     }
-    wavefront_maxloc<warpSize>(max, loc);
+
+    // The compiler optimizes the branching away in the middle end
+    // so we should see no difference in performance or code size
+    // at the end of compilation
+    if(warpSize == 32) {
+       wavefront_maxloc<32>(max, loc);
+    } else {
+       wavefront_maxloc<64>(max, loc);
+    }
+
     s_max[t] = max;
     s_loc[t] = loc;
   }
