@@ -340,9 +340,8 @@ int HPL_pdmatgen(HPL_T_test* TEST,
     }
     return HPL_FAILURE;
   }
-  mat->barrier_space[0] = 0;
-  mat->barrier_space[1] = 0;
-
+  CHECK_HIP_ERROR(
+          hipMemset(mat->barrier_space, 0, numbytes));
   /*we need 4 + 4*JB entries of scratch for pdfact */
   numbytes = sizeof(double) * 2 * (4 + 2 * NB);
   if(hostMalloc(GRID, (void**)&(mat->host_workspace), numbytes, info) !=

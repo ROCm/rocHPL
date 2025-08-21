@@ -106,7 +106,7 @@ if (HIP_VERSION VERSION_GREATER_EQUAL "5.7")
   set(TARGETS "${TARGETS};gfx942")
 endif()
 if (HIP_VERSION VERSION_GREATER_EQUAL "6.5")
-  set(TARGETS "${TARGETS};gfx950")
+  set(TARGETS "${TARGETS};gfx950;gfx1100")
 endif()
 
 foreach(target ${TARGETS})
