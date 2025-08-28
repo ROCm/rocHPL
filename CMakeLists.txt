@@ -105,7 +105,7 @@ else()
   find_program(ROCM_AGENT rocm_agent_enumerator)
   if(ROCM_AGENT)
     execute_process(
-      COMMAND ${ROCM_AGENT}
+      COMMAND "${ROCM_AGENT}" -name
       OUTPUT_VARIABLE ROCM_ARCHS
       ERROR_QUIET
       OUTPUT_STRIP_TRAILING_WHITESPACE
