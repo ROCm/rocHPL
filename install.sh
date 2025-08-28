@@ -17,7 +17,7 @@ function display_help()
   echo "    [--with-rocm=<dir>] Path to ROCm install (Default: /opt/rocm)"
   echo "    [--with-rocblas=<dir>] Path to rocBLAS library (Default: /opt/rocm/rocblas)"
   echo "    [--with-mpi=<dir>] Path to external MPI install (Default: clone+build OpenMPI)"
-  echo "    [--arch] Specify comma separated architecture list to build (Default: detect from rocminfo)"
+  echo "    [--arch] Specify comma separated architecture list to build (Default: detect from rocm_agent_enumerator)"
   echo "    [--verbose-print] Verbose output during HPL setup (Default: true)"
   echo "    [--progress-report] Print progress report to terminal during HPL run (Default: true)"
   echo "    [--detailed-timing] Record detailed timers during HPL run (Default: true)"
