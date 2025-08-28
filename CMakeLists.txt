@@ -102,16 +102,25 @@ if(DEFINED HPL_BUILD_ARCH AND NOT HPL_BUILD_ARCH STREQUAL "")
   message(STATUS "Using manually specified GPU targets: ${ARCHS}")
 else()
   message(STATUS "Detecting available architecture")
-  find_program(ROCM_AGENT rocm_agent_enumerator)
-  if(ROCM_AGENT)
+  ############ Find using rocminfo #####################
+  find_program(ROCMINFO_EXECUTABLE rocminfo)
+  if(ROCMINFO_EXECUTABLE)
     execute_process(
-      COMMAND "${ROCM_AGENT}" -name
-      OUTPUT_VARIABLE ROCM_ARCHS
+      COMMAND ${ROCMINFO_EXECUTABLE}
+      OUTPUT_VARIABLE ROCMINFO_OUTPUT
       ERROR_QUIET
       OUTPUT_STRIP_TRAILING_WHITESPACE
     )
-    string(REPLACE "\n" ";" ARCHS ${ROCM_ARCHS})
+
+    # 1) Only match lines where the token follows "Name:"
+    string(REGEX MATCHALL "Name:[ \t]+gfx[0-9a-z]+" ARCH_MATCHES "${ROCMINFO_OUTPUT}")
+
+    # 2) Strip the leading "Name:   " to keep just gfx tokens
+    string(REGEX REPLACE "Name:[ \t]+" "" ARCHS "${ARCH_MATCHES}")
+
+    # 3) Remove duplicates
     list(REMOVE_DUPLICATES ARCHS)
+
     foreach(match ${ARCHS})
       string(REGEX REPLACE "Name:\\s+" "" arch "${match}")
       list(APPEND ARCH "${arch}")
