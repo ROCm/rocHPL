@@ -120,7 +120,7 @@ else()
 endif()
 
 if(ARCHS STREQUAL "")
-    message(FATAL_ERROR "No GPU architectures detected via rocminfo and no BUILD_ARCH specified. Use -DBUILD_ARCH=gfxXXX")
+    message(FATAL_ERROR "No GPU architectures detected via rocminfo and no BUILD_ARCH specified. Use ./install.sh --arch=gfxXXX")
 endif()
 
 message(STATUS "Building for GPU architecture: ${ARCHS}")
