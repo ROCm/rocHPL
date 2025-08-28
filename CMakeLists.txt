@@ -94,22 +94,39 @@ else()
   list(APPEND CMAKE_HOST_FLAGS "-O3;-march=native")
 endif()
 
-# GPU arch targets
-set(TARGETS "gfx900;gfx906")
-if(HIP_VERSION VERSION_GREATER_EQUAL "3.7")
-  set(TARGETS "${TARGETS};gfx908")
-endif()
-if(HIP_VERSION VERSION_GREATER_EQUAL "4.3")
-  set(TARGETS "${TARGETS};gfx90a")
-endif()
-if (HIP_VERSION VERSION_GREATER_EQUAL "5.7")
-  set(TARGETS "${TARGETS};gfx942")
-endif()
-if (HIP_VERSION VERSION_GREATER_EQUAL "6.5")
-  set(TARGETS "${TARGETS};gfx950;gfx1100")
+set(ARCHS "")  # use plural to indicate list
+if(DEFINED HPL_BUILD_ARCH AND NOT HPL_BUILD_ARCH STREQUAL "")
+  string(REPLACE "," ";" ARCHS "${HPL_BUILD_ARCH}")
+  list(TRANSFORM ARCHS STRIP)
+  list(REMOVE_DUPLICATES ARCHS)
+  message(STATUS "Using manually specified GPU targets: ${ARCHS}")
+else()
+  message(STATUS "Detecting available architecture")
+  find_program(ROCM_AGENT rocm_agent_enumerator)
+  if(ROCM_AGENT)
+    execute_process(
+      COMMAND ${ROCM_AGENT}
+      OUTPUT_VARIABLE ROCM_ARCHS
+      ERROR_QUIET
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    string(REPLACE "\n" ";" ARCHS ${ROCM_ARCHS})
+    list(REMOVE_DUPLICATES ARCHS)
+    foreach(match ${ARCHS})
+      string(REGEX REPLACE "Name:\\s+" "" arch "${match}")
+      list(APPEND ARCH "${arch}")
+    endforeach()
+  endif()
 endif()
 
-foreach(target ${TARGETS})
+if(ARCHS STREQUAL "")
+    message(FATAL_ERROR "No GPU architectures detected via rocminfo and no BUILD_ARCH specified. Use -DBUILD_ARCH=gfxXXX")
+endif()
+
+message(STATUS "Building for GPU architecture: ${ARCHS}")
+
+# Generate HIP_HIPCC_FLAGS
+foreach(target ${ARCHS})
   list(APPEND HIP_HIPCC_FLAGS "--offload-arch=${target}")
 endforeach()
 

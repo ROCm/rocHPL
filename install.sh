@@ -17,6 +17,7 @@ function display_help()
   echo "    [--with-rocm=<dir>] Path to ROCm install (Default: /opt/rocm)"
   echo "    [--with-rocblas=<dir>] Path to rocBLAS library (Default: /opt/rocm/rocblas)"
   echo "    [--with-mpi=<dir>] Path to external MPI install (Default: clone+build OpenMPI)"
+  echo "    [--arch] Specify comma separated architecture list to build (Default: detect from rocminfo)"
   echo "    [--verbose-print] Verbose output during HPL setup (Default: true)"
   echo "    [--progress-report] Print progress report to terminal during HPL run (Default: true)"
   echo "    [--detailed-timing] Record detailed timers during HPL run (Default: true)"
@@ -230,7 +231,7 @@ enable_tracing=false
 # check if we have a modern version of getopt that can handle whitespace and long parameters
 getopt -T
 if [[ $? -eq 4 ]]; then
-  GETOPT_PARSE=$(getopt --name "${0}" --longoptions help,debug,prefix:,with-rocm:,with-mpi:,with-rocblas:,verbose-print:,progress-report:,detailed-timing:,enable-tracing: --options hg -- "$@")
+  GETOPT_PARSE=$(getopt --name "${0}" --longoptions help,debug,prefix:,with-rocm:,with-mpi:,with-rocblas:,verbose-print:,arch:,progress-report:,detailed-timing:,enable-tracing: --options hg -- "$@")
 else
   echo "Need a new version of getopt"
   exit_with_error 1
@@ -260,6 +261,9 @@ while true; do
         shift 2 ;;
     --with-mpi)
         with_mpi=${2}
+        shift 2 ;;
+    --arch)
+        arch=${2}
         shift 2 ;;
     --with-rocblas)
         with_rocblas=${2}
@@ -311,6 +315,7 @@ pushd .
 
   fi
 
+
   # #################################################
   # configure & build
   # #################################################
@@ -323,7 +328,6 @@ pushd .
   else
     cmake_common_options="${cmake_common_options} -DCMAKE_BUILD_TYPE=Debug"
   fi
-
   shopt -s nocasematch
   if [[ "${verbose_print}" == on || "${verbose_print}" == true || "${verbose_print}" == 1 || "${verbose_print}" == enabled ]]; then
     cmake_common_options="${cmake_common_options} -DHPL_VERBOSE_PRINT=ON"
@@ -336,6 +340,9 @@ pushd .
   fi
   if [[ "${enable_tracing}" == on || "${enable_tracing}" == true || "${enable_tracing}" == 1 || "${enable_tracing}" == enabled ]]; then
     cmake_common_options="${cmake_common_options} -DHPL_TRACING=ON"
+  fi
+  if [[ -n "${arch}" ]]; then
+    cmake_common_options="${cmake_common_options} -DHPL_BUILD_ARCH=${arch}"
   fi
   shopt -u nocasematch
 

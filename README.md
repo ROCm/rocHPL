@@ -27,6 +27,7 @@ cd rocHPL
 #    --with-rocm=<dir>    - Path to ROCm install (Default: /opt/rocm)
 #    --with-rocblas=<dir> - Path to rocBLAS library (Default: /opt/rocm/rocblas)
 #    --with-mpi=<dir>     - Path to external MPI install (Default: clone+build OpenMPI)
+#    --arch="arch-list"   - Specify comma separated architecture list to build (Default: detect from rocminfo)"
 #    --verbose-print      - Verbose output during HPL setup (Default: true)
 #    --progress-report    - Print progress report to terminal during HPL run (Default: true)
 #    --detailed-timing    - Record detailed timers during HPL run (Default: true)
