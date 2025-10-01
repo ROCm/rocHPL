@@ -17,6 +17,7 @@ function display_help()
   echo "    [--with-rocm=<dir>] Path to ROCm install (Default: /opt/rocm)"
   echo "    [--with-rocblas=<dir>] Path to rocBLAS library (Default: /opt/rocm/rocblas)"
   echo "    [--with-mpi=<dir>] Path to external MPI install (Default: clone+build OpenMPI)"
+  echo "    [--with-mpi-gtl=<dir>] Path to external MPI-GTL install (Optional: defaults to no gtl support)"
   echo "    [--verbose-print] Verbose output during HPL setup (Default: true)"
   echo "    [--progress-report] Print progress report to terminal during HPL run (Default: true)"
   echo "    [--detailed-timing] Record detailed timers during HPL run (Default: true)"
@@ -217,6 +218,7 @@ install_prefix=rocHPL
 build_release=true
 with_rocm=/opt/rocm
 with_mpi=tpl/openmpi
+with_mpi_gtl=none
 with_rocblas=/opt/rocm/rocblas
 verbose_print=true
 progress_report=true
@@ -230,7 +232,7 @@ enable_tracing=false
 # check if we have a modern version of getopt that can handle whitespace and long parameters
 getopt -T
 if [[ $? -eq 4 ]]; then
-  GETOPT_PARSE=$(getopt --name "${0}" --longoptions help,debug,prefix:,with-rocm:,with-mpi:,with-rocblas:,verbose-print:,progress-report:,detailed-timing:,enable-tracing: --options hg -- "$@")
+  GETOPT_PARSE=$(getopt --name "${0}" --longoptions help,debug,prefix:,with-rocm:,with-mpi:,with-mpi-gtl:,with-rocblas:,verbose-print:,progress-report:,detailed-timing:,enable-tracing: --options hg -- "$@")
 else
   echo "Need a new version of getopt"
   exit_with_error 1
@@ -260,6 +262,9 @@ while true; do
         shift 2 ;;
     --with-mpi)
         with_mpi=${2}
+        shift 2 ;;
+    --with-mpi-gtl)
+        with_mpi_gtl=${2}
         shift 2 ;;
     --with-rocblas)
         with_rocblas=${2}
@@ -316,6 +321,11 @@ pushd .
   # #################################################
   cmake_common_options="-DCMAKE_INSTALL_PREFIX=${install_prefix}
                         -DHPL_MPI_DIR=${with_mpi} -DROCM_PATH=${with_rocm} -DROCBLAS_PATH=${with_rocblas}"
+
+  if [[ "${with_mpi_gtl}" != none ]]; then
+    cmake_common_options="${cmake_common_options} -DMPI_GTL=${with_mpi_gtl}"
+  fi
+  
 
   # build type
   if [[ "${build_release}" == true ]]; then
