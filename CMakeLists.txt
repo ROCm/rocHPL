@@ -168,6 +168,11 @@ set_target_properties(rochpl PROPERTIES LINKER_LANGUAGE CXX)
 
 target_link_options(rochpl PRIVATE "-fopenmp")
 
+if(MPI_GTL)
+  find_library(GTL_LIB libmpi_gtl_hsa.so.0 "${MPI_GTL}")
+  target_link_libraries(rochpl PRIVATE "${GTL_LIB}")
+endif()
+
 set_target_properties(rochpl PROPERTIES HIP_ARCHITECTURES "${DEFAULT_AMDGPU_TARGETS}")
 
 # Configure a header file to pass the rocHPL version
