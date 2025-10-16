@@ -33,7 +33,7 @@ supported_distro( )
   fi
 
   case "${ID}" in
-    debian|linuxmint|ubuntu|centos|rhel|fedora|sles)
+    debian|linuxmint|ubuntu|centos|rhel|fedora|sles|tencentos)
         true
         ;;
     *)  printf "This script is currently supported on Debian, Linuxmint, Ubuntu, CentOS, RHEL, Fedora and SLES\n"
@@ -68,7 +68,7 @@ exit_with_error( )
         printf "sudo apt install -y ${library_dependencies_ubuntu[*]}\n"
         ;;
 
-      centos|rhel)
+      centos|rhel|tencentos)
         printf "sudo yum -y --nogpgcheck install ${library_dependencies_centos[*]}\n"
         ;;
 
