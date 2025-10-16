@@ -127,6 +127,9 @@ else()
     endforeach()
   endif()
 endif()
+if (HIP_VERSION VERSION_GREATER_EQUAL "7.0")
+  set(TARGETS "${TARGETS};gfx1201")
+endif()
 
 if(ARCHS STREQUAL "")
     message(FATAL_ERROR "No GPU architectures detected via rocminfo and no BUILD_ARCH specified. Use ./install.sh --arch=gfxXXX")
@@ -193,6 +196,11 @@ set_target_properties(rochpl PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY
 set_target_properties(rochpl PROPERTIES LINKER_LANGUAGE CXX)
 
 target_link_options(rochpl PRIVATE "-fopenmp")
+
+if(MPI_GTL)
+  find_library(GTL_LIB libmpi_gtl_hsa.so.0 "${MPI_GTL}")
+  target_link_libraries(rochpl PRIVATE "${GTL_LIB}")
+endif()
 
 set_target_properties(rochpl PROPERTIES HIP_ARCHITECTURES "${DEFAULT_AMDGPU_TARGETS}")
 
