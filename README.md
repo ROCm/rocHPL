@@ -145,7 +145,7 @@ The [license file][] can be found in the main repository.
 [HPL]: http://icl.utk.edu/hpl/
 [ROCm]: https://github.com/ROCm/ROCm
 [HIP]: https://github.com/ROCm/HIP
-[rocBLAS]: https://github.com/ROCm/rocBLAS
+[rocBLAS]: https://github.com/ROCm/rocm-libraries/tree/develop/projects/rocblas
 [OpenMPI]: https://github.com/open-mpi/ompi
 [UCX]: https://github.com/openucx/ucx
 [the issue tracker]: https://github.com/ROCm/rocHPL/issues
