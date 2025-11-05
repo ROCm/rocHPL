@@ -18,6 +18,7 @@ function display_help()
   echo "    [--with-rocblas=<dir>] Path to rocBLAS library (Default: /opt/rocm/rocblas)"
   echo "    [--with-mpi=<dir>] Path to external MPI install (Default: clone+build OpenMPI)"
   echo "    [--with-mpi-gtl=<dir>] Path to external MPI-GTL install (Optional: defaults to no gtl support)"
+  echo "    [--archs] Comma separated architecture list to build (Default: Cmake default (device architectures detected on the system))"
   echo "    [--verbose-print] Verbose output during HPL setup (Default: true)"
   echo "    [--progress-report] Print progress report to terminal during HPL run (Default: true)"
   echo "    [--detailed-timing] Record detailed timers during HPL run (Default: true)"
@@ -219,6 +220,7 @@ build_release=true
 with_rocm=/opt/rocm
 with_mpi=tpl/openmpi
 with_mpi_gtl=none
+archs=default
 with_rocblas=/opt/rocm/rocblas
 verbose_print=true
 progress_report=true
@@ -232,7 +234,7 @@ enable_tracing=false
 # check if we have a modern version of getopt that can handle whitespace and long parameters
 getopt -T
 if [[ $? -eq 4 ]]; then
-  GETOPT_PARSE=$(getopt --name "${0}" --longoptions help,debug,prefix:,with-rocm:,with-mpi:,with-mpi-gtl:,with-rocblas:,verbose-print:,progress-report:,detailed-timing:,enable-tracing: --options hg -- "$@")
+  GETOPT_PARSE=$(getopt --name "${0}" --longoptions help,debug,prefix:,with-rocm:,with-mpi:,with-mpi-gtl:,with-rocblas:,archs:,verbose-print:,progress-report:,detailed-timing:,enable-tracing: --options hg -- "$@")
 else
   echo "Need a new version of getopt"
   exit_with_error 1
@@ -268,6 +270,9 @@ while true; do
         shift 2 ;;
     --with-rocblas)
         with_rocblas=${2}
+        shift 2 ;;
+    --archs)
+        archs=${2}
         shift 2 ;;
     --verbose-print)
         verbose_print=${2}
@@ -325,13 +330,16 @@ pushd .
   if [[ "${with_mpi_gtl}" != none ]]; then
     cmake_common_options="${cmake_common_options} -DMPI_GTL=${with_mpi_gtl}"
   fi
-  
 
   # build type
   if [[ "${build_release}" == true ]]; then
     cmake_common_options="${cmake_common_options} -DCMAKE_BUILD_TYPE=Release"
   else
     cmake_common_options="${cmake_common_options} -DCMAKE_BUILD_TYPE=Debug"
+  fi
+
+  if [[ "${archs}" != default ]]; then
+    cmake_common_options="${cmake_common_options} -DCMAKE_HIP_ARCHITECTURES=${archs}"
   fi
 
   shopt -s nocasematch

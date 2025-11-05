@@ -23,7 +23,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.21 FATAL_ERROR)
 
 option(HPL_VERBOSE_PRINT   "Enable printing to terminal during run" OFF)
 option(HPL_PROGRESS_REPORT "Enable printing progess report to terminal during run" OFF)
@@ -53,7 +53,7 @@ if(POLICY CMP0066)
 endif()
 
 # rocHPL project
-project(rochpl LANGUAGES CXX)
+project(rochpl LANGUAGES CXX HIP)
 
 # Build flags
 set(CMAKE_CXX_STANDARD 11)
@@ -79,47 +79,26 @@ list(REMOVE_ITEM rochpl_source ${rochpl_device_source})
 
 # Flag source files as hip source files
 foreach(i ${rochpl_device_source})
-  set_source_files_properties(${i} PROPERTIES HIP_SOURCE_PROPERTY_FORMAT TRUE)
+  set_source_files_properties(${i} PROPERTIES LANGUAGE HIP)
 endforeach()
 
-# HIP flags workaround while target_compile_options does not work
-list(APPEND HIP_HIPCC_FLAGS "-Wno-unused-command-line-argument -Wno-deprecated-declarations -fPIE -fopenmp")
-list(APPEND CMAKE_HOST_FLAGS "-Wno-deprecated-declarations")
+list(APPEND ROCHPL_COMPILE_FLAGS -Wno-deprecated-declarations)
+list(APPEND ROCHPL_COMPILE_FLAGS $<$<COMPILE_LANGUAGE:HIP>:-Wno-unused-command-line-argument>)
+list(APPEND ROCHPL_COMPILE_FLAGS $<$<COMPILE_LANGUAGE:HIP>:-fPIE>)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-  list(APPEND HIP_HIPCC_FLAGS "-g -ggdb")
-  list(APPEND CMAKE_HOST_FLAGS "-O0;-g")
+  list(APPEND ROCHPL_COMPILE_FLAGS $<$<COMPILE_LANGUAGE:HIP>:-ggdb>)
 else()
-  list(APPEND HIP_HIPCC_FLAGS "-O3 -march=native -ffp-contract=fast -ffast-math -funsafe-math-optimizations")
-  list(APPEND CMAKE_HOST_FLAGS "-O3;-march=native")
+  list(APPEND ROCHPL_COMPILE_FLAGS -march=native)
+  list(APPEND ROCHPL_COMPILE_FLAGS $<$<COMPILE_LANGUAGE:HIP>:-ffp-contract=fast>)
+  list(APPEND ROCHPL_COMPILE_FLAGS $<$<COMPILE_LANGUAGE:HIP>:-ffast-math>)
+  list(APPEND ROCHPL_COMPILE_FLAGS $<$<COMPILE_LANGUAGE:HIP>:-funsafe-math-optimizations>)
 endif()
-
-# GPU arch targets
-set(TARGETS "gfx900;gfx906")
-if(HIP_VERSION VERSION_GREATER_EQUAL "3.7")
-  set(TARGETS "${TARGETS};gfx908")
-endif()
-if(HIP_VERSION VERSION_GREATER_EQUAL "4.3")
-  set(TARGETS "${TARGETS};gfx90a")
-endif()
-if (HIP_VERSION VERSION_GREATER_EQUAL "5.7")
-  set(TARGETS "${TARGETS};gfx942")
-endif()
-if (HIP_VERSION VERSION_GREATER_EQUAL "6.5")
-  set(TARGETS "${TARGETS};gfx950;gfx1100")
-endif()
-if (HIP_VERSION VERSION_GREATER_EQUAL "7.0")
-  set(TARGETS "${TARGETS};gfx1201")
-endif()
-
-foreach(target ${TARGETS})
-  list(APPEND HIP_HIPCC_FLAGS "--offload-arch=${target}")
-endforeach()
 
 # Target executable
-hip_add_executable(rochpl ${rochpl_source} ${rochpl_device_source})
+add_executable(rochpl ${rochpl_source} ${rochpl_device_source})
 
-target_compile_options(rochpl PRIVATE ${CMAKE_HOST_FLAGS})
+target_compile_options(rochpl PRIVATE ${ROCHPL_COMPILE_FLAGS})
 
 if(HPL_VERBOSE_PRINT)
   target_compile_definitions(rochpl PRIVATE HPL_VERBOSE_PRINT)
@@ -141,10 +120,12 @@ endif()
 target_include_directories(rochpl
                            PRIVATE
                            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-                           $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>
-                           $<BUILD_INTERFACE:${HIP_INCLUDE_DIRS}>
-                           $<BUILD_INTERFACE:${HPL_MPI_DIR}/include>
-                           $<BUILD_INTERFACE:${ROCM_PATH}/include/roctracer>)
+                           $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>)
+if(HPL_TRACING)
+  target_include_directories(rochpl
+                             PRIVATE
+                             $<BUILD_INTERFACE:${ROCM_PATH}/include/roctracer>)
+endif()
 
 #HIP
 target_link_libraries(rochpl PRIVATE hip::host)
@@ -175,8 +156,6 @@ if(MPI_GTL)
   find_library(GTL_LIB libmpi_gtl_hsa.so.0 "${MPI_GTL}")
   target_link_libraries(rochpl PRIVATE "${GTL_LIB}")
 endif()
-
-set_target_properties(rochpl PROPERTIES HIP_ARCHITECTURES "${DEFAULT_AMDGPU_TARGETS}")
 
 # Configure a header file to pass the rocHPL version
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/include/hpl_version.hpp.in"

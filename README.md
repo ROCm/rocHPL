@@ -3,7 +3,7 @@ rocHPL is a benchmark based on the [HPL][] benchmark application, implemented on
 
 ## Requirements
 * Git
-* CMake (3.10 or later)
+* CMake (3.21 or later)
 * MPI (Optional)
 * AMD [ROCm] platform (3.5 or later)
 * [rocBLAS][]
@@ -27,6 +27,7 @@ cd rocHPL
 #    --with-rocm=<dir>    - Path to ROCm install (Default: /opt/rocm)
 #    --with-rocblas=<dir> - Path to rocBLAS library (Default: /opt/rocm/rocblas)
 #    --with-mpi=<dir>     - Path to external MPI install (Default: clone+build OpenMPI)
+#    --archs=<list>       - Comma separated architectures list to build (Default: Cmake default (device architectures detected on the system))"
 #    --verbose-print      - Verbose output during HPL setup (Default: true)
 #    --progress-report    - Print progress report to terminal during HPL run (Default: true)
 #    --detailed-timing    - Record detailed timers during HPL run (Default: true)
