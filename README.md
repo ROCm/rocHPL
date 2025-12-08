@@ -7,6 +7,7 @@ rocHPL is a benchmark based on the [HPL][] benchmark application, implemented on
 * MPI (Optional)
 * AMD [ROCm] platform (3.5 or later)
 * [rocBLAS][]
+* [Package Dependencies][]
 
 ## Quickstart rocHPL build and install
 
@@ -150,3 +151,4 @@ The [license file][] can be found in the main repository.
 [UCX]: https://github.com/openucx/ucx
 [the issue tracker]: https://github.com/ROCm/rocHPL/issues
 [license file]: https://github.com/ROCm/rocHPL
+[Package Dependencies]: https://github.com/ROCm/rocHPL/blob/main/install.sh#L52-L55
