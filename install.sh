@@ -113,7 +113,9 @@ install_openmpi( )
 
   if [ ! -d "./tpl/ucx" ]; then
     mkdir -p tpl && cd tpl
-    git clone --branch v1.18.0 https://github.com/openucx/ucx.git ucx
+    # v1.19.1 is the first release containing the UCT/MM FIFO room fix
+    # (openucx/ucx#10823, commit 6b2e361) that prevents hangs when tail > head.
+    git clone --branch v1.19.1 https://github.com/openucx/ucx.git ucx
     check_exit_code 2
     cd ucx;
     ./autogen.sh; ./autogen.sh #why do we have to run this twice?
