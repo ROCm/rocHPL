@@ -28,13 +28,14 @@ cd rocHPL
 #    --with-rocm=<dir>    - Path to ROCm install (Default: /opt/rocm)
 #    --with-rocblas=<dir> - Path to rocBLAS library (Default: /opt/rocm/rocblas)
 #    --with-mpi=<dir>     - Path to external MPI install (Default: clone+build OpenMPI)
+#    --with-mpi-gtl=<dir> - Path to external MPI-GTL install (Optional: defaults to no gtl support)
 #    --verbose-print      - Verbose output during HPL setup (Default: true)
 #    --progress-report    - Print progress report to terminal during HPL run (Default: true)
 #    --detailed-timing    - Record detailed timers during HPL run (Default: true)
 #    --enable-tracing     - Annotate profiler traces with rocTX markers (Default: false)
 ./install.sh
 ```
-By default, [UCX] v1.16.0, and [OpenMPI] v5.0.3 will be cloned and built in rocHPL/tpl. After building, the `rochpl` executable is placed in build/rochpl-install.
+By default, [UCX] v1.18.0, and [OpenMPI] v5.0.7 will be cloned and built in rocHPL/tpl. After building, the `rochpl` executable is placed in build/rochpl-install.
 
 ## Running rocHPL benchmark application
 rocHPL provides some helpful wrapper scripts. A wrapper script for launching via `mpirun` is provided in `mpirun_rochpl`. This script has two distinct run modes:
@@ -68,9 +69,9 @@ Innovative Computing Laboratory, University of Tennessee
 HPL.out      output file name (if any)
 0            device out (6=stdout,7=stderr,file)
 1            # of problems sizes (N)
-45312        Ns
+193280       Ns
 1            # of NBs
-384          NBs
+896          NBs
 1            PMAP process mapping (0=Row-,1=Column-major)
 1            # of process grids (P x Q)
 1            Ps
@@ -113,11 +114,11 @@ srun -N 2 -n 16 -c 16 --gpus-per-task 1 --gpu-bind=closest ./build/bin/rochpl -P
 This helps to control where/how much inter-node communication is occuring.
 
 ## Performance evaluation
-rocHPL is typically weak scaled so that the global matrix fills all available VRAM on all GPUs. The matrix size N is usually selected to be a multiple of the blocksize NB. Some sample runs on 32GB MI100 GPUs include:
-* 1 MI100: `mpirun_rochpl -P 1 -Q 1 -N  64512 --NB 512`
-* 2 MI100: `mpirun_rochpl -P 1 -Q 2 -N  90112 --NB 512`
-* 4 MI100: `mpirun_rochpl -P 2 -Q 2 -N 126976 --NB 512`
-* 8 MI100: `mpirun_rochpl -P 2 -Q 4 -N 180224 --NB 512`
+rocHPL is typically weak scaled so that the global matrix fills all available VRAM on all GPUs. The matrix size N is usually selected to be a multiple of the blocksize NB. Some sample runs on 288GB MI355X GPUs include:
+* 1 MI355X: `mpirun_rochpl -P 1 -Q 1 -N 193280 --NB 896`
+* 2 MI355X: `mpirun_rochpl -P 2 -Q 1 -N 273280 --NB 896`
+* 4 MI355X: `mpirun_rochpl -P 2 -Q 2 -N 387072 --NB 896`
+* 8 MI355X: `mpirun_rochpl -P 2 -Q 4 -N 546560 --NB 896`
 
 Overall performance of the benchmark is measured in 64-bit floating point operations (FLOPs) per second. Performance is reported at the end of the run to the user's specified output (by default the performance is printed to stdout and a results file HPL.out).
 
