@@ -274,7 +274,11 @@ myq=$((rank/p))
 cpulist=$(lscpu --parse=CPU,CORE,NODE | awk '!/#/' | tr ',' "\t" | sort -k 2 -g -s)
 
 #construct list of devices and their numa affinities
-devicelist=$(${rocm_dir}/bin/rocm-smi --csv --showtoponuma | tail -n +2 | tr ',' "\t")
+# amd-smi replaces the deprecated rocm-smi. Its CSV emits one row per cpu_list
+# entry per GPU, so collapse to the first row of each GPU and re-emit the legacy
+# "cardN <numa_node> <numa_affinity>" layout the parsing below expects.
+devicelist=$(${rocm_dir}/bin/amd-smi static --numa --csv | tail -n +2 | \
+  awk -F',' 'NF>1 && !seen[$1]++ {printf "card%s\t%s\t%s\n", $1, $2, $3}')
 
 #count the cpus per core
 threads_per_core=$(echo "${cpulist}" | grep -c ".*	0	.*")
