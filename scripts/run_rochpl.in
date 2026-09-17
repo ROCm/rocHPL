@@ -211,6 +211,16 @@ elif [[ -n ${FLUX_TASK_LOCAL_ID+x} ]]; then
   nnodes=$FLUX_JOB_NNODES
   rank=$FLUX_TASK_LOCAL_ID
   size=$((globalSize/nnodes))
+elif [[ -n ${MV2_COMM_WORLD_RANK+x} ]]; then
+  globalRank=$MV2_COMM_WORLD_RANK
+  globalSize=$MV2_COMM_WORLD_SIZE
+  rank=$MV2_COMM_WORLD_LOCAL_RANK
+  size=$MV2_COMM_WORLD_LOCAL_SIZE
+elif [[ -n ${PMI_RANK+x} && -n ${MPI_LOCALRANKID+x} ]]; then
+  globalRank=$PMI_RANK
+  globalSize=$PMI_SIZE
+  rank=$MPI_LOCALRANKID
+  size=$MPI_LOCALNRANKS
 fi
 set -u
 
