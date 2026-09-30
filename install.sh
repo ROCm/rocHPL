@@ -33,7 +33,7 @@ supported_distro( )
   fi
 
   case "${ID}" in
-    debian|linuxmint|ubuntu|centos|rhel|fedora|sles|tencentos)
+    debian|linuxmint|ubuntu|centos|rhel|fedora|sles|opensuse-leap|tencentos)
         true
         ;;
     *)  printf "This script is currently supported on Debian, Linuxmint, Ubuntu, CentOS, RHEL, Fedora and SLES\n"
