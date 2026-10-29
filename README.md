@@ -29,6 +29,7 @@ cd rocHPL
 #    --with-rocblas=<dir> - Path to rocBLAS library (Default: /opt/rocm/rocblas)
 #    --with-mpi=<dir>     - Path to external MPI install (Default: clone+build OpenMPI)
 #    --with-mpi-gtl=<dir> - Path to external MPI-GTL install (Optional: defaults to no gtl support)
+#    --cpu-arch=<arch>    - CPU architecture for -march (Default: compiler default)
 #    --verbose-print      - Verbose output during HPL setup (Default: true)
 #    --progress-report    - Print progress report to terminal during HPL run (Default: true)
 #    --detailed-timing    - Record detailed timers during HPL run (Default: true)
@@ -36,6 +37,12 @@ cd rocHPL
 ./install.sh
 ```
 By default, [UCX] v1.18.0, and [OpenMPI] v5.0.7 will be cloned and built in rocHPL/tpl. After building, the `rochpl` executable is placed in build/rochpl-install.
+
+Host compilation uses the compiler's default CPU architecture unless one is
+specified. For example, use `./install.sh --cpu-arch=znver3` to target Zen 3
+compute nodes from a different build host. Direct CMake builds can set
+`-DROCHPL_CPU_ARCH=znver3`. Use `native` to optimize for the build host when
+the resulting binary will run on compatible CPUs.
 
 ## Running rocHPL benchmark application
 rocHPL provides some helpful wrapper scripts. A wrapper script for launching via `mpirun` is provided in `mpirun_rochpl`. This script has two distinct run modes:

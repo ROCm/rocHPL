@@ -30,6 +30,8 @@ option(HPL_PROGRESS_REPORT "Enable printing progess report to terminal during ru
 option(HPL_DETAILED_TIMING "Enable detailed timers during run" OFF)
 option(HPL_TRACING         "Annotate profiler traces with rocTX markers" OFF)
 
+set(ROCHPL_CPU_ARCH "" CACHE STRING "CPU architecture for -march (empty uses the compiler default)")
+
 option(ROCM_PATH "Path to ROCm install" /opt/rocm)
 option(HPL_MPI_DIR  "Path to MPI library" ${CMAKE_CURRENT_SOURCE_DIR}/tpl/openmpi)
 
@@ -90,8 +92,12 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   list(APPEND HIP_HIPCC_FLAGS "-g -ggdb")
   list(APPEND CMAKE_HOST_FLAGS "-O0;-g")
 else()
-  list(APPEND HIP_HIPCC_FLAGS "-O3 -march=native -ffp-contract=fast -ffast-math -funsafe-math-optimizations")
-  list(APPEND CMAKE_HOST_FLAGS "-O3;-march=native")
+  list(APPEND HIP_HIPCC_FLAGS "-O3 -ffp-contract=fast -ffast-math -funsafe-math-optimizations")
+  list(APPEND CMAKE_HOST_FLAGS "-O3")
+endif()
+if(NOT ROCHPL_CPU_ARCH STREQUAL "")
+  list(APPEND HIP_HIPCC_FLAGS "-march=${ROCHPL_CPU_ARCH}")
+  list(APPEND CMAKE_HOST_FLAGS "-march=${ROCHPL_CPU_ARCH}")
 endif()
 
 # GPU arch targets
