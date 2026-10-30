@@ -18,6 +18,7 @@
 #include <iostream>
 #include <cstdio>
 #include <cstring>
+#include <sys/stat.h>
 
 void HPL_pdinfo(int          ARGC,
                 char**       ARGV,
@@ -247,6 +248,8 @@ void HPL_pdinfo(int          ARGC,
   bool        inputfile     = false;
   double      frac          = 0.3;
   std::string inputFileName = "HPL.dat";
+  std::string outputFileName = "HPL.out";
+  bool        outputFileSet  = false;
 
   for(int i = 1; i < ARGC; i++) {
     if(strcmp(ARGV[i], "-h") == 0 || strcmp(ARGV[i], "--help") == 0) {
@@ -275,11 +278,11 @@ void HPL_pdinfo(int          ARGC,
                "                                   split the trailing "
                "submatrix.           \n"
                "-i  [ --input ]  arg (=HPL.dat)    Input file. When set, "
-               "all other commnand   \n"
-               "                                   line parameters are "
-               "ignored, and problem   \n"
-               "                                   parameters are read "
-               "from input file.       \n"
+               "problem parameters are  \n"
+               "                                   read from the input "
+               "file.                  \n"
+               "-o  [ --output ] arg               Output file; overrides  \n"
+               "                                   the input file setting.\n"
                "-h  [ --help ]                     Produces this help "
                "message                 \n"
                "--version                          Prints the version "
@@ -380,6 +383,16 @@ void HPL_pdinfo(int          ARGC,
       inputFileName = ARGV[i + 1];
       inputfile     = true;
       i++;
+    }
+    if(strcmp(ARGV[i], "-o") == 0 || strcmp(ARGV[i], "--output") == 0) {
+      if(i + 1 >= ARGC || ARGV[i + 1][0] == '\0') {
+        if(rank == 0)
+          HPL_pwarn(stderr, __LINE__, "HPL_pdinfo", "Output file is required.");
+        MPI_Finalize();
+        exit(1);
+      }
+      outputFileName = ARGV[++i];
+      outputFileSet  = true;
     }
   }
 
@@ -567,12 +580,15 @@ void HPL_pdinfo(int          ARGC,
     TEST->epsil = HPL_pdlamch(MPI_COMM_WORLD, HPL_MACH_EPS);
 
     if(rank == 0) {
-      if((TEST->outfp = fopen("HPL.out", "w")) == NULL) { error = 1; }
+      if((TEST->outfp = fopen(outputFileName.c_str(), "w")) == NULL) {
+        error = 1;
+      }
     }
     (void)HPL_all_reduce((void*)(&error), 1, HPL_INT, HPL_MAX, MPI_COMM_WORLD);
     if(error) {
       if(rank == 0)
-        HPL_pwarn(stderr, __LINE__, "HPL_pdinfo", "cannot open file HPL.out.");
+        HPL_pwarn(stderr, __LINE__, "HPL_pdinfo", "cannot open file %s.",
+                  outputFileName.c_str());
       MPI_Finalize();
       exit(1);
     }
@@ -606,7 +622,24 @@ void HPL_pdinfo(int          ARGC,
       status = fgets(line, HPL_LINE_MAX - 2, infp);
       (void)sscanf(line, "%s", num);
       fid = atoi(num);
-      if(fid == 6)
+      if(outputFileSet) {
+        struct stat inputStat, outputStat;
+        if(fstat(fileno(infp), &inputStat) == 0 &&
+           stat(outputFileName.c_str(), &outputStat) == 0 &&
+           inputStat.st_dev == outputStat.st_dev &&
+           inputStat.st_ino == outputStat.st_ino) {
+          HPL_pwarn(stderr, __LINE__, "HPL_pdinfo",
+                    "Output file is the input file: %s.", outputFileName.c_str());
+          error = 1;
+          goto label_error;
+        }
+        if((TEST->outfp = fopen(outputFileName.c_str(), "w")) == NULL) {
+          HPL_pwarn(stderr, __LINE__, "HPL_pdinfo", "cannot open file %s.",
+                    outputFileName.c_str());
+          error = 1;
+          goto label_error;
+        }
+      } else if(fid == 6)
         TEST->outfp = stdout;
       else if(fid == 7)
         TEST->outfp = stderr;
