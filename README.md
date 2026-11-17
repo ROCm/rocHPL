@@ -51,6 +51,15 @@ mpirun_rochpl -P <P> -Q <P> -N <N> --NB <NB> -f <frac>
 ```
 This run script will launch a total of np=PxQ MPI processes.
 
+In command-line mode, results are written to `HPL.out` by default. Use
+`-o <path>` or `--output <path>` to select another file. The same option may
+be used with an input file, in which case it overrides the output destination
+specified there (including stdout or stderr). Without this option, the input
+file's output settings are unchanged. The option is supported by
+`mpirun_rochpl`, `run_rochpl`, and the `rochpl` executable.
+Existing output files are overwritten; choosing the input file as the output
+is rejected.
+
 The second runmode takes an input file together with a number of MPI processes:
 ```
 mpirun_rochpl -P <p> -Q <q> -i <input> -f <frac>

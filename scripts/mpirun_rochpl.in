@@ -28,9 +28,8 @@ function display_help()
   echo "            problem size.                                 "
   echo "    [-f]    Specific split fraction: the percentange to   "
   echo "            split the trailing submatrix.                 "
-  echo "    [-i]    Input file. When set, all other commnand      "
-  echo "            line parameters are ignored, and problem      "
-  echo "            parameters are read from input file.          "
+  echo "    [-i]    Read problem parameters from an input file.   "
+  echo "    [-o|--output] Output file (overrides input file setting)."
   echo "    [-h|--help] prints this help message                  "
   echo "    [--version] Print rocHPL version number.              "
 }
@@ -98,6 +97,8 @@ it=1
 frac=0.3
 
 filename=HPL.dat
+outputfile=
+outputfile_set=false
 inputfile=false
 cmdrun=false
 
@@ -133,7 +134,7 @@ fi
 # check if we have a modern version of getopt that can handle whitespace and long parameters
 getopt -T
 if [[ $? -eq 4 ]]; then
-  GETOPT_PARSE=$(getopt --name "${0}" --longoptions NB:,it:,help,version,devices:, --options hP:Q:p:q:N:i:f: -- "$@")
+  GETOPT_PARSE=$(getopt --name "${0}" --longoptions NB:,it:,help,version,devices:,output:, --options hP:Q:p:q:N:i:f:o: -- "$@")
 else
   echo "Need a new version of getopt"
   exit 1
@@ -186,6 +187,10 @@ while true; do
         filename=${2}
         inputfile=true
         shift 2 ;;
+    -o|--output)
+        outputfile=${2}
+        outputfile_set=true
+        shift 2 ;;
     --devices)
         devices=${2}
         shift 2 ;;
@@ -209,14 +214,18 @@ if [[ "$np" -lt 1 ]]; then
 fi
 
 if [[ "${inputfile}" == true ]]; then
-  rochpl_args="-P ${P} -Q ${Q} -p ${p} -q ${q} -i ${filename} -f ${frac} --it ${it}"
+  rochpl_args=(-P "$P" -Q "$Q" -p "$p" -q "$q" -i "$filename" -f "$frac" --it "$it")
 else
-  rochpl_args="-P ${P} -Q ${Q} -p ${p} -q ${q} -N ${N} --NB ${NB} -f ${frac} --it ${it}"
+  rochpl_args=(-P "$P" -Q "$Q" -p "$p" -q "$q" -N "$N" --NB "$NB" -f "$frac" --it "$it")
+fi
+
+if [[ "${outputfile_set}" == true ]]; then
+  rochpl_args+=(--output "$outputfile")
 fi
 
 if [ ! -z "${devices}" ]; then
-  rochpl_args+=" --devices=${devices}"
+  rochpl_args+=("--devices=${devices}")
 fi
 
 #run
-${mpi_bin} -np ${np} ${mpi_args} ${rochpl_runscript} ${rochpl_args}
+${mpi_bin} -np ${np} ${mpi_args} "${rochpl_runscript}" "${rochpl_args[@]}"
