@@ -460,7 +460,7 @@ void HPL_pdpancrN(HPL_T_panel* PANEL,
     int     m     = M;
     int     n     = N;
     double* Aptr  = A + ii;
-    double* L1ptr = L1 + jj * PANEL->jb;
+    double* L1ptr = L1 + jj;
 
     void* params[] = {&m,
                       &(PANEL->jb),
