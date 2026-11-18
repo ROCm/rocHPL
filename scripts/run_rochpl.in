@@ -193,24 +193,79 @@ fi
 
 # Get local process numbering
 set +u
+# MPI launched inside a Slurm allocation can inherit the outer srun task's
+# SLURM_* values on every rank. Prefer a complete MPI rank tuple when those
+# values describe a different process world.
+valid_rank_tuple() {
+  [[ $1 =~ ^[0-9]+$ && $2 =~ ^[1-9][0-9]*$ &&
+     $3 =~ ^[0-9]+$ && $4 =~ ^[1-9][0-9]*$ ]] || return 1
+  (( 10#$1 < 10#$2 && 10#$3 < 10#$4 ))
+}
+
+mpiRank=
+mpiSize=
+mpiLocalRank=
+mpiLocalSize=
+if valid_rank_tuple "${MV2_COMM_WORLD_RANK:-}" "${MV2_COMM_WORLD_SIZE:-}" \
+                    "${MV2_COMM_WORLD_LOCAL_RANK:-}" "${MV2_COMM_WORLD_LOCAL_SIZE:-}"; then
+  mpiRank=$MV2_COMM_WORLD_RANK
+  mpiSize=$MV2_COMM_WORLD_SIZE
+  mpiLocalRank=$MV2_COMM_WORLD_LOCAL_RANK
+  mpiLocalSize=$MV2_COMM_WORLD_LOCAL_SIZE
+elif valid_rank_tuple "${PMI_RANK:-}" "${PMI_SIZE:-}" \
+                      "${MPI_LOCALRANKID:-}" "${MPI_LOCALNRANKS:-}"; then
+  mpiRank=$PMI_RANK
+  mpiSize=$PMI_SIZE
+  mpiLocalRank=$MPI_LOCALRANKID
+  mpiLocalSize=$MPI_LOCALNRANKS
+fi
+
+slurmLocalSize=${SLURM_TASKS_PER_NODE:-}
+slurmLocalSize=${slurmLocalSize%%,*}
+slurmLocalSize=${slurmLocalSize%%(*}
+slurmValid=false
+if [[ -n ${SLURM_LOCALID+x} ]] &&
+   valid_rank_tuple "${SLURM_PROCID:-}" "${SLURM_NTASKS:-}" \
+                    "${SLURM_LOCALID:-}" "$slurmLocalSize"; then
+  slurmValid=true
+fi
+
 if [[ -n ${OMPI_COMM_WORLD_LOCAL_RANK+x} ]]; then
   globalRank=$OMPI_COMM_WORLD_RANK
   globalSize=$OMPI_COMM_WORLD_SIZE
   rank=$OMPI_COMM_WORLD_LOCAL_RANK
   size=$OMPI_COMM_WORLD_LOCAL_SIZE
+elif [[ -n ${SLURM_LOCALID+x} && -n $mpiSize ]] &&
+     { [[ $slurmValid == false ]] ||
+       [[ $mpiRank != $SLURM_PROCID || $mpiSize != $SLURM_NTASKS ||
+          $mpiLocalRank != $SLURM_LOCALID || $mpiLocalSize != $slurmLocalSize ]]; }; then
+  globalRank=$mpiRank
+  globalSize=$mpiSize
+  rank=$mpiLocalRank
+  size=$mpiLocalSize
 elif [[ -n ${SLURM_LOCALID+x} ]]; then
+  if [[ $slurmValid == false ]]; then
+    echo "Unable to determine valid Slurm rank environment; aborting"
+    exit 1
+  fi
   globalRank=$SLURM_PROCID
   globalSize=$SLURM_NTASKS
   rank=$SLURM_LOCALID
-  size=$SLURM_TASKS_PER_NODE
-  #Slurm can return a string like "2(x2),1". Get the first number
-  size=$(echo $size | sed -r 's/^([^.]+).*$/\1/; s/^[^0-9]*([0-9]+).*$/\1/')
+  size=$slurmLocalSize
 elif [[ -n ${FLUX_TASK_LOCAL_ID+x} ]]; then
   globalRank=$FLUX_TASK_RANK
   globalSize=$FLUX_JOB_SIZE
   nnodes=$FLUX_JOB_NNODES
   rank=$FLUX_TASK_LOCAL_ID
   size=$((globalSize/nnodes))
+elif [[ -n $mpiSize ]]; then
+  globalRank=$mpiRank
+  globalSize=$mpiSize
+  rank=$mpiLocalRank
+  size=$mpiLocalSize
+else
+  echo "Unable to determine valid MPI rank environment; aborting"
+  exit 1
 fi
 set -u
 
