@@ -167,7 +167,11 @@ endif()
 set_target_properties(rochpl PROPERTIES VERSION ${rochpl_VERSION})
 set_target_properties(rochpl PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
-set_target_properties(rochpl PROPERTIES LINKER_LANGUAGE CXX)
+if(CMAKE_HIP_COMPILER)
+  set_target_properties(rochpl PROPERTIES LINKER_LANGUAGE HIP)
+else()
+  set_target_properties(rochpl PROPERTIES LINKER_LANGUAGE CXX)
+endif()
 
 target_link_options(rochpl PRIVATE "-fopenmp")
 
@@ -176,7 +180,7 @@ if(MPI_GTL)
   target_link_libraries(rochpl PRIVATE "${GTL_LIB}")
 endif()
 
-set_target_properties(rochpl PROPERTIES HIP_ARCHITECTURES "${DEFAULT_AMDGPU_TARGETS}")
+set_target_properties(rochpl PROPERTIES HIP_ARCHITECTURES "${TARGETS}")
 
 # Configure a header file to pass the rocHPL version
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/include/hpl_version.hpp.in"
